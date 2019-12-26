@@ -171,31 +171,37 @@
 						this->copy(other);
 					}
 					//
-					binaryVector<internal> operator <<=(int bits) {
-						internal carryRegister=internalVec;
+					binaryVector<internal>& operator <<=(int bits) {
+						internal carryRegister;
 						internal carryOver=0;
-						auto Xinternals=(sizeof(internal)*8)/bits;
+						auto Xinternals=bits/(sizeof(internal)*8);
 						//end bit is pushed past end,clear binaryVector
 						if(Xinternals>internalVec.size()) {
 							for(auto& item:internalVec)
 								item=0;
-							return;
+							return *this;
 						} else {
 							//amount of remaining bits  after shift
-							auto remainder=(sizeof(internal)*8)%bits;
-							for(auto i=Xinternals;i!=internalVec.size();i++) {
-								//
-								carryRegister=(internalVec[i]<<remainder)|carryOver;
-								carryOver=internalVec[i]>>(sizeof(internal)*8-remainder);
+							auto remainder=bits%(sizeof(internal)*8);
+							for(auto i=internalVec.size()-1;i>=Xinternals;i--) {
+								//assume 0 if carring over before first bit
+								if(i-Xinternals-1<0)
+									carryOver=0;
+								else
+									carryOver=internalVec[i-Xinternals-1]>>(sizeof(internal)*8-remainder);
+								//put in register
+								carryRegister=(internalVec[i-Xinternals]<<remainder)|carryOver;
 								//move left X internals
-								internalVec[i-Xinternals]=carryRegister;
+								internalVec[i]=carryRegister;
 							}
+							std::cout<<(*this)<<std::endl;;
 							//fill rest with 0s
-							for(auto i=internalVec.size()-Xinternals+1;i!=internalVec.size();i++) {
+							for(auto i=0;i<Xinternals;i++) {
 								internalVec[i]=0;
 							}
 						}
 						this->clipEndExtraBits();
+						return *this;
 					}
 					binaryVector<internal> operator>>= (int bits) {
 						//how many internals the shift spans
