@@ -1,0 +1,7 @@
+[
+{
+  "directory": "/home/tc/projects/binaryGraph/build",
+  "command": "/home/tc/.zapcc/build/bin/zapcc++   -I/home/tc/projects/binaryGraph/./ext/bitarray    -std=gnu++17 -o CMakeFiles/binaryGraph.dir/src/binaryGraph.cpp.o -c /home/tc/projects/binaryGraph/src/binaryGraph.cpp",
+  "file": "/home/tc/projects/binaryGraph/src/binaryGraph.cpp"
+}
+]
