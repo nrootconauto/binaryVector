@@ -6,8 +6,9 @@
 		vec[0]=0b11001101;
 		binaryVector::binaryVectorView<unsigned char> view(&vec,2);
 		vec<<=9;
-		std::cout<<"Hello World one:"<<view<<std::endl;
+		std::cout<<"Hello World one:"<<vec<<std::endl;
 		vec>>=9;
-		std::cout<<"Hello World two:"<<view<<std::endl;
+		view.assignChunk(0xff,0);
+		std::cout<<"Hello World two:"<<vec<<std::endl;
 		return 0;
 	}

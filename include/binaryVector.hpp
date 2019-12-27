@@ -260,7 +260,7 @@
 						return temp;
 					}
 					//gets iternals
-					std::vector<internal> internals() {
+					std::vector<internal>& internals() {
 						return internalVec;
 					}
 					size_t size() {
@@ -305,7 +305,7 @@
 							internals[Xinternals]=value<<(remainder);
 						}
 						if(Xinternals+1>=0&&Xinternals+1<internals.size()) {
-							internals[Xinternals+1]=value<<(sizeof(internals)*8-remainder);
+							internals[Xinternals+1]=value>>(sizeof(internal_)*8-remainder);
 						}
 					}
 					//iterator stuff;
