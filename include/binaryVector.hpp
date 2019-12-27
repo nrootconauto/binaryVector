@@ -194,7 +194,7 @@
 								//move left X internals
 								internalVec[i]=carryRegister;
 							}
-							std::cout<<(*this)<<std::endl;;
+							std::cout<<(*this)<<std::endl;
 							//fill rest with 0s
 							for(auto i=0;i<Xinternals;i++) {
 								internalVec[i]=0;
