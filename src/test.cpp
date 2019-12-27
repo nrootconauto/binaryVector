@@ -3,10 +3,11 @@
 	
 	int main() {
 		binaryVector::binaryVector<unsigned char> vec(8*3);
-		vec[1]=0xff;
+		vec[0]=0b11001101;
+		binaryVector::binaryVectorView<unsigned char> view(&vec,2);
 		vec<<=9;
-		std::cout<<"Hello World 0"<<vec<<std::endl;
+		std::cout<<"Hello World one:"<<view<<std::endl;
 		vec>>=9;
-		std::cout<<"Hello World"<<vec<<std::endl;
+		std::cout<<"Hello World two:"<<view<<std::endl;
 		return 0;
 	}

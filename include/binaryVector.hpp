@@ -5,31 +5,32 @@
 #include <algorithm>
 #include <sstream>
 	namespace binaryVector {
+			//nibble table
+			//nibble lookup table
+			const std::vector<const char*> nibbleTable {
+				"0000",
+				"0001",
+				"0010",
+				"0011",
+				"0100",
+				"0101",
+				"0110",
+				"0111",
+				"1000",
+				"1001",
+				"1010",
+				"1011",
+				"1100",
+				"1101",
+				"1110",
+				"1111"
+			};
 			//binary Vector
 			template<typename internal=size_t> class binaryVector {
 				public:
 					//stream stuff;
 					friend std::ostream& operator<<(std::ostream& out,binaryVector<internal>& thing) {
 						std::string str;
-						//nibble lookup table
-						std::vector<const char*> nibbleTable {
-							"0000",
-							"0001",
-							"0010",
-							"0011",
-							"0100",
-							"0101",
-							"0110",
-							"0111",
-							"1000",
-							"1001",
-							"1010",
-							"1011",
-							"1100",
-							"1101",
-							"1110",
-							"1111"
-						};
 						//got through the internals
 						for(size_t Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
 							for(size_t b=0;b!=(8*sizeof(internal))/4;b++)
@@ -291,7 +292,7 @@
 						}
 						//
 						if(Xinternals>=0&&Xinternals<parent->internals().size()) {
-							lastHalf=(parent->internals())&Xinternals<<(remainder);
+							lastHalf=(parent->internals()[Xinternals])<<(remainder);
 						}
 						return firstHalf|lastHalf;
 					}
@@ -325,6 +326,23 @@
 					bool operator!=(binaryVectorView<internal_>&other) {
 						return !(*this==other);
 					}
+					//
+					friend std::ostream& operator<<(std::ostream& out,binaryVectorView<internal_>& view) {
+						//span in internals to read from
+						const size_t sizeInBits=view.parent->size();
+						size_t Xinternals=(sizeInBits-view.iterOffset-view.baseOffset)/(8*sizeof(internal_));
+						size_t remainder=(sizeInBits-view.iterOffset-view.baseOffset)%(8*sizeof(internal_));
+						//if there are remaining bits
+						Xinternals+=remainder?1:0;
+						std::string str;
+						//got through the internals
+						for(size_t i=0;i!=Xinternals*8*sizeof(internal_);i+=sizeof(internal_)*8)
+							for(size_t b=0;b!=(8*sizeof(internal_))/4;b++)
+								str=nibbleTable[0x0f&(view.getChunk(i)>>4*b)]+str;
+						//stream it
+						out<<str;
+						return out;
+					};
 				private:
 					binaryVector<internal_>* parent;
 					size_t baseOffset;
