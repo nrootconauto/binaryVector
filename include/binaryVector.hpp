@@ -70,7 +70,7 @@
 						auto backwardsOffset=sizeof(internal)*8-perInternalOffset;
 						//copy that shiz
 						internal extra=0;
-						const internal ones=~0;;
+						const internal ones=~0;
 						size_t bitsToWrite=other.bitCount;
 						bool firstRun=true;
 						
@@ -205,29 +205,30 @@
 					}
 					binaryVector<internal> operator>>= (int bits) {
 						//how many internals the shift spans
-						auto Xinternals=(sizeof(internal)*8)/bits;
-						auto remainder=(sizeof(internal)*8)/bits;
+						auto Xinternals=bits/(sizeof(internal)*8);
+						auto remainder=bits%(sizeof(internal)*8);
 						internal leftOverBits=0;
 						//go foward in for statement
-						for(auto i=internalVec.size()-Xinternals;i!=-1;i--) {
-							if(i!=0) {
+						for(auto i=0;i<=internalVec.size();i++) {
+							if(i+Xinternals+1<internalVec.size()) {
 								//shift to get remianing bits,then shift to begining of next internal
-								leftOverBits=internalVec[i-1]<<(remainder);
-								//shift back "trimmed" value
-								leftOverBits>>=remainder;
+								leftOverBits=internalVec[i+Xinternals+1]<<(sizeof(internal)*8-remainder);
 							} else
 								leftOverBits=0;
 							//apply shift and clip
 							if(i+Xinternals<internalVec.size())
-								internalVec[i+Xinternals]=(internalVec[i]<<remainder)|leftOverBits;
+								internalVec[i]=(internalVec[i+Xinternals]>>remainder)|leftOverBits;
+							else
+								internalVec[i]=0;
 							//
 						}
 						this->clipEndExtraBits();
+						return *this;
 					}
 					//iterator class
 					template <typename internal_> class internalsIt: public std::iterator<std::bidirectional_iterator_tag, internal_> {
 						public:
-							internalsIt(size_t where=0):offset(where) {}
+							internalsIt(binaryVector<internal_>* container_=nullptr,size_t where=0):offset(where),container(container_) {}
 							internalsIt& operator++() {
 								offset++;
 								return *this;
@@ -240,7 +241,7 @@
 								return (*this->container).internalVec[offset];
 							}
 							bool operator==(internalsIt& other) {
-								return (other->offset==offset)&&(other->container==container);
+								return (other.offset==offset)&&(other.container==container);
 							}
 							bool operator!=(internalsIt& other) {
 								return !((*this)==other);
@@ -250,13 +251,11 @@
 							binaryVector<internal_>* container;
 					};
 					internalsIt<internal> begin() {
-						internalsIt<internal> temp;
-						temp.container=this;
+						internalsIt<internal> temp(this);
 						return temp;
 					}
 					internalsIt<internal> end() {
-						internalsIt<internal> temp(this->container.size());
-						temp.container=this->container;
+						internalsIt<internal> temp(this,this->internalVec.size());
 						return temp;
 					}
 					//gets iternals
