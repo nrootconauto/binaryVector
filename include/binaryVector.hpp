@@ -57,6 +57,54 @@
 			//binary Vector
 			template<typename internal=size_t,class internalVector=addressor<internal>> class binaryVector {
 				public:
+					//binary operators
+					binaryVector<internal,addressor<internal>> operator ~() {
+						//make a blank new binaryVector
+						auto temp=binaryVector<internal,addressor<internal>>(this->size());
+						//copy over
+						for(int i=0;i!=this->internals().size();i++)
+							temp.write(i,~this->read(i));
+						//
+						temp.clipEndExtraBits();
+						return temp;
+					}
+					//or
+					binaryVector& operator |=(binaryVector& other) {
+						auto thisSize=this->internals().size();
+						auto otherSize=other.internals().size();
+						//choose the lower part
+						auto minSize=(thisSize<otherSize)?thisSize:otherSize;
+						for(auto i=0;i!=minSize;i++) {
+							this->write(i,this->read(i)|other->read(i));
+						}
+						return *this;
+					}
+					//xor !!!
+					binaryVector& operator ^=(binaryVector& other) {
+						auto thisSize=this->internals().size();
+						auto otherSize=other.internals().size();
+						//choose the lower part
+						auto minSize=(thisSize<otherSize)?thisSize:otherSize;
+						for(auto i=0;i!=minSize;i++) {
+							this->write(i,this->read(i)^other->read(i));
+						}
+						//
+						return *this;
+					}
+					//
+					binaryVector& operator &=(binaryVector& other) {
+						auto thisSize=this->internals().size();
+						auto otherSize=other.internals().size();
+						//choose the lower one
+						auto minSize=(thisSize<otherSize)?thisSize:otherSize;
+						for(auto i=0;i!=minSize;i++) {
+							this->write(i,this->read(i)|other->read(i));
+						}
+						//zeroify this past the minSize
+						for(auto i=minSize;i!=this->internalVec.size();i++)
+							this->write(i,0);
+						return *this;
+					}
 					//access operator
 					internal read(size_t index) {
 						return this->internalVec.readType(index);
@@ -85,6 +133,11 @@
 					//internal is to be equal or lesser in size to otherInternal
 					template<typename otherInternal> void copy(binaryVector<otherInternal>& other,int offset=0) {
 						this->resize(offset+other.size());
+						if(sizeof(otherInternal)==sizeof(internal)) {
+							for(int i=0;i!=other.internals().size();i++)
+								this->write(i,other.read(i));
+							return;
+						}
 						auto currentBit=offset;
 						//offset to qapply for each internal
 						auto perInternalOffset=offset%(sizeof(internal)*8);
@@ -95,7 +148,6 @@
 						const internal ones=~0;
 						size_t bitsToWrite=other.bitCount;
 						bool firstRun=true;
-						
 						//the lambda to do this shiz
 						auto mergeIntoThis=[&](internal& piece)->void {
 							//make a unit to fill up wir
@@ -296,7 +348,8 @@
 						auto toClip=totalBits-this->size();
 						//makes a internal full of ones then shifts it right to make a mask
 						auto backIndex=internalVec.size()-1; //last elem
-						baseContent.writeType(backIndex,baseContent.readType(backIndex)&(~(internal)0)>>(sizeof(internal)*8-toClip));
+						const internal ones=~(internal)0;
+						baseContent.writeType(backIndex,baseContent.readType(backIndex)&(ones>>(sizeof(internal)*8-toClip)));
 					}
 				private:
 					size_t bitCount;
@@ -418,7 +471,7 @@
 			};
 	}
 	//stream stuff;
-	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVector<internal,vectorType>& thing) {
+	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVector<internal,vectorType> thing) {
 		std::string str;
 		//got through the internals
 		for(size_t Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
