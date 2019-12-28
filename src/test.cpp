@@ -9,7 +9,7 @@
 		std::cout<<"ReaD:"<<(unsigned int)(view.read(0))<<std::endl;
 		std::cout<<"Read2:"<<(unsigned int )(view.read(1))<<std::endl;
 		view.write(0,0b11011011);
-		//view<<=2;
+		view<<=2;
 		std::cout<<"Hello World one:"<<vec<<std::endl;
 		std::cout<<"Hello World two:"<<view<<std::endl;
 		return 0;

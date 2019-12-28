@@ -290,7 +290,6 @@
 					size_t size() {
 						return this->bitCount;
 					}
-				private:
 					void clipEndExtraBits() {
 						auto& baseContent=this->internalVec.baseContent();
 						auto totalBits=8*sizeof(internal)*baseContent.size();
@@ -338,14 +337,18 @@
 						auto Xinternals=offset/(8*sizeof(internal_));
 						auto remainder=offset%(8*sizeof(internal_));
 						auto& internals=parent->internals();
+						const internal_ ones=~(internal_)0;
 						if(Xinternals<internals.size()) {
-							auto leftOver=internals.readType(Xinternals)>>(sizeof(internal_)*8-remainder);
+							auto leftOver=internals.readType(Xinternals)&(ones>>(sizeof(internal_)*8-remainder));
 							internals.writeType(Xinternals,(value<<(remainder))|leftOver);
 						}
 						if(Xinternals+1<internals.size()) {
-							auto leftOver=internals.readType(Xinternals+1)<<remainder;
+							auto leftOver=internals.readType(Xinternals+1)&(ones<<remainder);
 							internals.writeType(Xinternals+1,(value>>(sizeof(internal_)*8-remainder))|leftOver);
 						}
+						//clip if writing on the last Internal
+						if(Xinternals>=internals.size())
+							parent->clipEndExtraBits();
 					}
 					//iterator stuff;
 					internal_ operator* () {
