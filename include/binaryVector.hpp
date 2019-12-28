@@ -193,7 +193,7 @@
 						this->copy(other);
 					}
 					//
-					binaryVector<internal>& operator <<=(int bits) {
+					binaryVector& operator <<=(int bits) {
 						internal carryRegister;
 						internal carryOver=0;
 						auto Xinternals=bits/(sizeof(internal)*8);
@@ -205,9 +205,10 @@
 						} else {
 							//amount of remaining bits  after shift
 							auto remainder=bits%(sizeof(internal)*8);
-							for(auto i=internalVec.size()-1;i>=Xinternals;i--) {
-								//assume 0 if carring over before first bit
-								if(i-Xinternals-1<0)
+							for(auto I=internalVec.size()-1;true;I--) {
+								auto& i=I;
+								//assume 0 if carring over before first bit(Xinternals-1 must not (when subtracted) be before 0)
+								if(i<Xinternals+1)
 									carryOver=0;
 								else
 									carryOver=internalVec.readType(i-Xinternals-1)>>(sizeof(internal)*8-remainder);
@@ -215,10 +216,13 @@
 								carryRegister=(internalVec.readType(i-Xinternals)<<remainder)|carryOver;
 								//move left X internals
 								internalVec.writeType(i,carryRegister);
+								//BREAK IF GOING TO GO BEFORE FIRST THING
+								if(I==0)
+									break;
 							}
 							//fill rest with 0s
-							for(auto i=0;i<Xinternals;i++) {
-								internalVec.writeType(i,0);
+							for(auto I=0;I<Xinternals;I++) {
+								internalVec.writeType(I,0);
 							}
 						}
 						this->clipEndExtraBits();
@@ -305,27 +309,32 @@
 					//constructor
 					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0): parent(parent_), baseOffset(offset_), iterOffset(0) {}
 					internal_ readType(size_t offset_) {
-						auto offset=baseOffset+offset_;
-						auto Xinternals=offset/(8*sizeof(internal_));
-						auto remainder=offset%(8*sizeof(internal_));
+						auto timesEight=offset_*8*sizeof(internal_);
+						//make sure not addressing a negatice value(and see if there is room for a reaiminder)
+						if(baseOffset>8*sizeof(internal_)+timesEight)
+							return 0;
+						auto remainder=(baseOffset)%(8*sizeof(internal_));
+						auto Xinternals=(baseOffset>timesEight)?0:(timesEight+baseOffset)/(8*sizeof(internal_));
+						//if baseOffset goes past negative,assume 0 IF there is a reminder 
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
-						//get first half from previous
-						if(Xinternals-1>=0&&Xinternals-1<parent->internals().size()) {
-							firstHalf=(parent->internals().readType(Xinternals-1))>>(8*sizeof(internal_)-remainder);
+						//===get first half from previous
+						//(Xinternals must be above 0 as it checks the previous item)
+						if(Xinternals+1<parent->internals().size()) {
+							firstHalf=(parent->internals().readType(Xinternals+1))<<(8*sizeof(internal_)-remainder);
 						}
-						//
-						if(Xinternals>=0&&Xinternals<parent->internals().size()) {
-							lastHalf=(parent->internals().readType(Xinternals))<<(remainder);
+						//=== second half 
+						if(Xinternals<parent->internals().size()) {
+							lastHalf=(parent->internals().readType(Xinternals))>>remainder;
 						}
 						return firstHalf|lastHalf;
 					}
-					void writeType(internal_ value,size_t offset_) {
+					void writeType(size_t offset_,internal_ value) {
 						//do nothign if no parent
 						if(parent==nullptr)
 							return;
 						//
-						auto offset=baseOffset+offset_;
+						auto offset=baseOffset+offset_*sizeof(internal_)*8;
 						auto Xinternals=offset/(8*sizeof(internal_));
 						auto remainder=offset%(8*sizeof(internal_));
 						auto& internals=parent->internals();
@@ -376,7 +385,7 @@
 						if(this->parent==nullptr)
 							return 0;
 						//add one size if there is a remaidner
-						auto addOne=((this->parent->size()-iterOffset-baseOffset)%8)?:
+						auto addOne=((this->parent->size()-iterOffset-baseOffset)%8)?1:0;
 						return (this->parent->size()-iterOffset-baseOffset)/8+addOne;
 					}
 					//dummy
