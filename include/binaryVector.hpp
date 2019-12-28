@@ -48,23 +48,15 @@
 					void resize(size_t size) {
 						this->container.resize(size);
 					}
+					addressor& baseContent() {
+						return *this;
+					}
 				private:
 					std::vector<type> container;
 			};
 			//binary Vector
 			template<typename internal=size_t,class internalVector=addressor<internal>> class binaryVector {
 				public:
-					//stream stuff;
-					friend std::ostream& operator<<(std::ostream& out,binaryVector<internal>& thing) {
-						std::string str;
-						//got through the internals
-						for(size_t Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
-							for(size_t b=0;b!=(8*sizeof(internal))/4;b++)
-								str=nibbleTable[0x0f&(thing.read(Xinternal)>>4*b)]+str;
-						//stream it
-						out<<str;
-						return out;
-					}
 					//access operator
 					internal read(size_t index) {
 						return this->internalVec.readType(index);
@@ -181,9 +173,10 @@
 						this->clipEndExtraBits();
 					}
 					//constructor
-					binaryVector(size_t sizeInBits=0) {
+					binaryVector(size_t sizeInBits) {
 						this->resize(sizeInBits);
 					}
+					binaryVector() {}
 					//constructor
 					binaryVector(internal* items,size_t count=-1) {
 						//if count if not defined(==-1),get the array length
@@ -223,7 +216,6 @@
 								//move left X internals
 								internalVec.writeType(i,carryRegister);
 							}
-							std::cout<<(*this)<<std::endl;
 							//fill rest with 0s
 							for(auto i=0;i<Xinternals;i++) {
 								internalVec.writeType(i,0);
@@ -288,7 +280,7 @@
 						return temp;
 					}
 					//gets iternals
-					addressor<internal>& internals() {
+					internalVector& internals() {
 						return internalVec;
 					}
 					size_t size() {
@@ -296,20 +288,23 @@
 					}
 				private:
 					void clipEndExtraBits() {
-						auto totalBits=8*sizeof(internal)*internalVec.size();
+						auto& baseContent=this->internalVec.baseContent();
+						auto totalBits=8*sizeof(internal)*baseContent.size();
 						auto toClip=totalBits-this->size();
 						//makes a internal full of ones then shifts it right to make a mask
 						auto backIndex=internalVec.size()-1; //last elem
-						internalVec.writeType(backIndex,internalVec.readType(backIndex)&(~(internal)0)>>(sizeof(internal)*8-toClip));
+						baseContent.writeType(backIndex,baseContent.readType(backIndex)&(~(internal)0)>>(sizeof(internal)*8-toClip));
 					}
+				private:
 					size_t bitCount;
+				protected:
 					internalVector internalVec;
 			};
-			template<class internal_> class binaryVectorView:public std::iterator<std::output_iterator_tag, internal_> {
+			template<class internal_,class vectorType=addressor<internal_>> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
 				public:
 					//constructor
-					binaryVectorView(binaryVector<internal_>* parent_=nullptr,size_t offset_=0): parent(parent_), baseOffset(offset_), iterOffset(0) {}
-					internal_ getChunk(size_t offset_) {
+					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0): parent(parent_), baseOffset(offset_), iterOffset(0) {}
+					internal_ readType(size_t offset_) {
 						auto offset=baseOffset+offset_;
 						auto Xinternals=offset/(8*sizeof(internal_));
 						auto remainder=offset%(8*sizeof(internal_));
@@ -317,46 +312,50 @@
 						internal_ lastHalf=0;
 						//get first half from previous
 						if(Xinternals-1>=0&&Xinternals-1<parent->internals().size()) {
-							firstHalf=(parent->internals()[Xinternals-1])>>(8*sizeof(internal_)-remainder);
+							firstHalf=(parent->internals().readType(Xinternals-1))>>(8*sizeof(internal_)-remainder);
 						}
 						//
 						if(Xinternals>=0&&Xinternals<parent->internals().size()) {
-							lastHalf=(parent->internals()[Xinternals])<<(remainder);
+							lastHalf=(parent->internals().readType(Xinternals))<<(remainder);
 						}
 						return firstHalf|lastHalf;
 					}
-					void assignChunk(internal_ value,size_t offset_) {
+					void writeType(internal_ value,size_t offset_) {
+						//do nothign if no parent
+						if(parent==nullptr)
+							return;
+						//
 						auto offset=baseOffset+offset_;
 						auto Xinternals=offset/(8*sizeof(internal_));
 						auto remainder=offset%(8*sizeof(internal_));
 						auto& internals=parent->internals();
 						if(Xinternals>=0&&Xinternals<internals.size()) {
-							internals[Xinternals]=value<<(remainder);
+							internals.writeType(Xinternals,value<<(remainder));
 						}
 						if(Xinternals+1>=0&&Xinternals+1<internals.size()) {
-							internals[Xinternals+1]=value>>(sizeof(internal_)*8-remainder);
+							internals.writeType(Xinternals+1,value>>(sizeof(internal_)*8-remainder));
 						}
 					}
 					//iterator stuff;
 					internal_ operator* () {
-						return this->getChunk();
+						return this->readType(0);
 					}
-					binaryVectorView<internal_>& operator++() {
+					viewAddressor& operator++() {
 						iterOffset+=8*sizeof(internal_);
 						return *this;
 					}
-					binaryVectorView<internal_>& operator--() {
+					viewAddressor& operator--() {
 						iterOffset-=8*sizeof(internal_);
 						return *this;
 					}
-					bool operator==(binaryVectorView<internal_>& other) {
+					bool operator==(viewAddressor& other) {
 						return parent==other->parent&&(baseOffset+iterOffset)==(other->baseOffset+other->iterOffset);
 					}
-					bool operator!=(binaryVectorView<internal_>&other) {
+					bool operator!=(viewAddressor&other) {
 						return !(*this==other);
 					}
 					//
-					friend std::ostream& operator<<(std::ostream& out,binaryVectorView<internal_>& view) {
+					friend std::ostream& operator<<(std::ostream& out,viewAddressor& view) {
 						//span in internals to read from
 						const size_t sizeInBits=view.parent->size();
 						size_t Xinternals=(sizeInBits-view.iterOffset-view.baseOffset)/(8*sizeof(internal_));
@@ -367,17 +366,53 @@
 						//got through the internals
 						for(size_t i=0;i!=Xinternals*8*sizeof(internal_);i+=sizeof(internal_)*8)
 							for(size_t b=0;b!=(8*sizeof(internal_))/4;b++)
-								str=nibbleTable[0x0f&(view.getChunk(i)>>4*b)]+str;
+								str=nibbleTable[0x0f&(view.readType(i)>>4*b)]+str;
 						//stream it
 						out<<str;
 						return out;
 					};
+					size_t size() {
+						//return 0 if no parent
+						if(this->parent==nullptr)
+							return 0;
+						//add one size if there is a remaidner
+						auto addOne=((this->parent->size()-iterOffset-baseOffset)%8)?:
+						return (this->parent->size()-iterOffset-baseOffset)/8+addOne;
+					}
+					//dummy
+					void resize(size_t size) {
+					}
+					vectorType& baseContent() {
+						return parent->internals();
+					}
+				protected:
+					binaryVector<internal_,vectorType>* parent;
 				private:
-					binaryVector<internal_>* parent;
 					size_t baseOffset;
 					size_t iterOffset;
 			};
+			//
+			template<typename internal,typename vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
+				public:
+					binaryVectorView(binaryVector<internal,vectorType>& parent,int offset=0) {
+						this->internals()=viewAddressor<internal>(&parent,offset);
+					}
+					binaryVectorView();
+					binaryVectorView(binaryVectorView& other) =delete;
+					binaryVectorView(size_t sizeInBits)= delete;
+					binaryVectorView(internal* items,size_t count=-1) = delete;
+			};
 	}
-	
+	//stream stuff;
+	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVector<internal,vectorType>& thing) {
+		std::string str;
+		//got through the internals
+		for(size_t Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
+			for(size_t b=0;b!=(8*sizeof(internal))/4;b++)
+				str=binaryVector::nibbleTable[0x0f&(thing.read(Xinternal)>>4*b)]+str;
+		//stream it
+		out<<str;
+		return out;
+	}
 	namespace binaryGraph {
 	}
