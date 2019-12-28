@@ -25,8 +25,34 @@
 				"1110",
 				"1111"
 			};
+			//addressor
+			template<typename type> class addressor {
+				public:
+					type readType(size_t index) {
+						if(index<0)
+							return 0;
+						if(index>=this->container.size())
+							return 0;
+						return container[index];
+					}
+					void writeType(size_t index,type value) {
+						if(index<0)
+							return;
+						if(index>=this->container.size())
+							return;
+						container[index]=value;
+					}
+					size_t size() {
+						return container.size();
+					}
+					void resize(size_t size) {
+						this->container.resize(size);
+					}
+				private:
+					std::vector<type> container;
+			};
 			//binary Vector
-			template<typename internal=size_t> class binaryVector {
+			template<typename internal=size_t,class internalVector=addressor<internal>> class binaryVector {
 				public:
 					//stream stuff;
 					friend std::ostream& operator<<(std::ostream& out,binaryVector<internal>& thing) {
@@ -34,14 +60,17 @@
 						//got through the internals
 						for(size_t Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
 							for(size_t b=0;b!=(8*sizeof(internal))/4;b++)
-								str=nibbleTable[0x0f&(thing[Xinternal]>>4*b)]+str;
+								str=nibbleTable[0x0f&(thing.read(Xinternal)>>4*b)]+str;
 						//stream it
 						out<<str;
 						return out;
 					}
 					//access operator
-					internal& operator[](size_t where) {
-						return this->internalVec[where];
+					internal read(size_t index) {
+						return this->internalVec.readType(index);
+					}
+					void write(size_t index,size_t value) {
+						return this->internalVec.writeType(index,value);
 					}
 					//rezie for bits
 					void resize(size_t bits) {
@@ -51,7 +80,7 @@
 							//figure out how much to push back,frst statement handles the raminder
 							auto toPushBack=((bits-capacity)%(8*sizeof(internal)))?1:0;
 							toPushBack+=(bits-capacity)/(8*sizeof(internal));
-							this->internalVec.resize(this->internalVec.size()+toPushBack,0);
+							this->internalVec.resize(this->internalVec.size()+toPushBack);
 						} else {
 							//% is for remainder
 							auto neededSize=bits/(sizeof(internal)*8)+((bits%(8*sizeof(internal)))?1:0);
@@ -87,8 +116,7 @@
 									mask=~ones;
 							} else
 								mask=ones>>backwardsOffset;
-							auto& internalUnit=this->internalVec[currentBit/(8*sizeof(internal))];
-							internalUnit=((piece<<perInternalOffset));
+							this->internalVec.writeType(currentBit/(8*sizeof(internal)),piece<<perInternalOffset);
 							//go to next bits
 							currentBit+=sizeof(internal)-perInternalOffset;
 						};
@@ -178,8 +206,8 @@
 						auto Xinternals=bits/(sizeof(internal)*8);
 						//end bit is pushed past end,clear binaryVector
 						if(Xinternals>internalVec.size()) {
-							for(auto& item:internalVec)
-								item=0;
+							for(auto i=0;i!=internalVec.size();i++)
+								internalVec.writeType(i,0);
 							return *this;
 						} else {
 							//amount of remaining bits  after shift
@@ -189,16 +217,16 @@
 								if(i-Xinternals-1<0)
 									carryOver=0;
 								else
-									carryOver=internalVec[i-Xinternals-1]>>(sizeof(internal)*8-remainder);
+									carryOver=internalVec.readType(i-Xinternals-1)>>(sizeof(internal)*8-remainder);
 								//put in register
-								carryRegister=(internalVec[i-Xinternals]<<remainder)|carryOver;
+								carryRegister=(internalVec.readType(i-Xinternals)<<remainder)|carryOver;
 								//move left X internals
-								internalVec[i]=carryRegister;
+								internalVec.writeType(i,carryRegister);
 							}
 							std::cout<<(*this)<<std::endl;
 							//fill rest with 0s
 							for(auto i=0;i<Xinternals;i++) {
-								internalVec[i]=0;
+								internalVec.writeType(i,0);
 							}
 						}
 						this->clipEndExtraBits();
@@ -213,14 +241,14 @@
 						for(auto i=0;i<=internalVec.size();i++) {
 							if(i+Xinternals+1<internalVec.size()) {
 								//shift to get remianing bits,then shift to begining of next internal
-								leftOverBits=internalVec[i+Xinternals+1]<<(sizeof(internal)*8-remainder);
+								leftOverBits=internalVec.readType(i+Xinternals+1)<<(sizeof(internal)*8-remainder);
 							} else
 								leftOverBits=0;
 							//apply shift and clip
 							if(i+Xinternals<internalVec.size())
-								internalVec[i]=(internalVec[i+Xinternals]>>remainder)|leftOverBits;
+								internalVec.writeType(i,(internalVec.readType(i+Xinternals)>>remainder)|leftOverBits);
 							else
-								internalVec[i]=0;
+								internalVec.writeType(i,0);
 							//
 						}
 						this->clipEndExtraBits();
@@ -238,8 +266,8 @@
 								offset--;
 								return *this;
 							}
-							internal_& operator*() {
-								return (*this->container).internalVec[offset];
+							internal_ operator*() {
+								return this->container->internals().readType(this->offset);
 							}
 							bool operator==(internalsIt& other) {
 								return (other.offset==offset)&&(other.container==container);
@@ -260,7 +288,7 @@
 						return temp;
 					}
 					//gets iternals
-					std::vector<internal>& internals() {
+					addressor<internal>& internals() {
 						return internalVec;
 					}
 					size_t size() {
@@ -271,10 +299,11 @@
 						auto totalBits=8*sizeof(internal)*internalVec.size();
 						auto toClip=totalBits-this->size();
 						//makes a internal full of ones then shifts it right to make a mask
-						internalVec.back()&=(~(internal)0)>>(sizeof(internal)*8-toClip);
+						auto backIndex=internalVec.size()-1; //last elem
+						internalVec.writeType(backIndex,internalVec.readType(backIndex)&(~(internal)0)>>(sizeof(internal)*8-toClip));
 					}
 					size_t bitCount;
-					std::vector<internal> internalVec;
+					internalVector internalVec;
 			};
 			template<class internal_> class binaryVectorView:public std::iterator<std::output_iterator_tag, internal_> {
 				public:
@@ -313,11 +342,11 @@
 						return this->getChunk();
 					}
 					binaryVectorView<internal_>& operator++() {
-						iterOffset+=sizeof(internal_);
+						iterOffset+=8*sizeof(internal_);
 						return *this;
 					}
 					binaryVectorView<internal_>& operator--() {
-						iterOffset-=sizeof(internal_);
+						iterOffset-=8*sizeof(internal_);
 						return *this;
 					}
 					bool operator==(binaryVectorView<internal_>& other) {
