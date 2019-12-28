@@ -338,11 +338,13 @@
 						auto Xinternals=offset/(8*sizeof(internal_));
 						auto remainder=offset%(8*sizeof(internal_));
 						auto& internals=parent->internals();
-						if(Xinternals>=0&&Xinternals<internals.size()) {
-							internals.writeType(Xinternals,value<<(remainder));
+						if(Xinternals<internals.size()) {
+							auto leftOver=internals.readType(Xinternals)>>(sizeof(internal_)*8-remainder);
+							internals.writeType(Xinternals,(value<<(remainder))|leftOver);
 						}
-						if(Xinternals+1>=0&&Xinternals+1<internals.size()) {
-							internals.writeType(Xinternals+1,value>>(sizeof(internal_)*8-remainder));
+						if(Xinternals+1<internals.size()) {
+							auto leftOver=internals.readType(Xinternals+1)<<remainder;
+							internals.writeType(Xinternals+1,(value>>(sizeof(internal_)*8-remainder))|leftOver);
 						}
 					}
 					//iterator stuff;
