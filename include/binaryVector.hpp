@@ -77,6 +77,7 @@
 						for(auto i=0;i!=minSize;i++) {
 							this->write(i,this->read(i)|other->read(i));
 						}
+						this->clipEndExtraBits();
 						return *this;
 					}
 					//xor !!!
@@ -89,6 +90,7 @@
 							this->write(i,this->read(i)^other->read(i));
 						}
 						//
+						this->clipEndExtraBits();
 						return *this;
 					}
 					//
@@ -103,6 +105,7 @@
 						//zeroify this past the minSize
 						for(auto i=minSize;i!=this->internalVec.size();i++)
 							this->write(i,0);
+						this->clipEndExtraBits();
 						return *this;
 					}
 					//access operator
@@ -280,7 +283,7 @@
 						this->clipEndExtraBits();
 						return *this;
 					}
-					binaryVector<internal> operator>>= (int bits) {
+					binaryVector<internal> operator>>= (signed long bits) {
 						//how many internals the shift spans
 						auto Xinternals=bits/(sizeof(internal)*8);
 						auto remainder=bits%(sizeof(internal)*8);
