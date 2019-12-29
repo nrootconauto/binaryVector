@@ -248,9 +248,9 @@
 						this->copy(other);
 					}
 					//
-					binaryVector& operator <<=(int bits) {
+					binaryVector& operator <<=(signed long bits) {
 						internal carryRegister;
-						internal carryOver=0;
+						internal carryOver;
 						auto Xinternals=bits/(sizeof(internal)*8);
 						//end bit is pushed past end,clear binaryVector
 						if(Xinternals>internalVec.size()) {
@@ -263,12 +263,15 @@
 							for(auto I=internalVec.size()-1;true;I--) {
 								auto& i=I;
 								//assume 0 if carring over before first bit(Xinternals-1 must not (when subtracted) be before 0)
-								if(i<Xinternals+1)
+								if(i-Xinternals-1<0||i-Xinternals-1>=internalVec.size())
 									carryOver=0;
 								else
 									carryOver=internalVec.readType(i-Xinternals-1)>>(sizeof(internal)*8-remainder);
 								//put in register
-								carryRegister=(internalVec.readType(i-Xinternals)<<remainder)|carryOver;
+								if(i-Xinternals>=0&&i-Xinternals<internalVec.size())
+									carryRegister=(internalVec.readType(i-Xinternals)<<remainder)|carryOver;
+								else
+									carryRegister=carryOver;
 								//move left X internals
 								internalVec.writeType(i,carryRegister);
 								//BREAK IF GOING TO GO BEFORE FIRST THING
@@ -290,13 +293,14 @@
 						internal leftOverBits=0;
 						//go foward in for statement
 						for(auto i=0;i<=internalVec.size();i++) {
-							if(i+Xinternals+1<internalVec.size()) {
+							auto index=i+Xinternals;
+							if(index+1>=0&&index+1<internalVec.size()) {
 								//shift to get remianing bits,then shift to begining of next internal
 								leftOverBits=internalVec.readType(i+Xinternals+1)<<(sizeof(internal)*8-remainder);
 							} else
 								leftOverBits=0;
 							//apply shift and clip
-							if(i+Xinternals<internalVec.size())
+							if(index>=0&&index<internalVec.size())
 								internalVec.writeType(i,(internalVec.readType(i+Xinternals)>>remainder)|leftOverBits);
 							else
 								internalVec.writeType(i,0);
@@ -352,7 +356,7 @@
 						//makes a internal full of ones then shifts it right to make a mask
 						auto backIndex=internalVec.size()-1; //last elem
 						const internal ones=~(internal)0;
-						baseContent.writeType(backIndex,baseContent.readType(backIndex)&(ones>>(sizeof(internal)*8-toClip)));
+						baseContent.writeType(backIndex,baseContent.readType(backIndex)&(ones>>toClip));
 					}
 				private:
 					size_t bitCount;

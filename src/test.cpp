@@ -2,7 +2,7 @@
 #include "../include/binaryVector.hpp"
 	
 	int main() {
-		binaryVector::binaryVector<unsigned char> vec(8*2+4);
+		binaryVector::binaryVector<unsigned char> vec(8*3);
 		vec.write(0,0b11001101);
 		binaryVector::binaryVectorView<unsigned char> view(vec,0);
 		vec<<=10;
