@@ -286,7 +286,7 @@
 						this->clipEndExtraBits();
 						return *this;
 					}
-					binaryVector<internal> operator>>= (signed long bits) {
+					binaryVector operator>>= (signed long bits) {
 						//how many internals the shift spans
 						auto Xinternals=bits/(sizeof(internal)*8);
 						auto remainder=bits%(sizeof(internal)*8);
@@ -367,13 +367,13 @@
 				public:
 					//constructor
 					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0): parent(parent_), baseOffset(offset_), iterOffset(0) {}
-					internal_ readType(size_t offset_) {
+					internal_ readType(signed long offset_) {
 						auto timesEight=offset_*8*sizeof(internal_);
 						//make sure not addressing a negatice value(and see if there is room for a reaiminder)
-						if(baseOffset>8*sizeof(internal_)+timesEight)
+						if(baseOffset>2*8*sizeof(internal_)+timesEight)
 							return 0;
 						auto remainder=(baseOffset)%(8*sizeof(internal_));
-						auto Xinternals=(baseOffset>timesEight)?0:(timesEight+baseOffset)/(8*sizeof(internal_));
+						auto Xinternals=(timesEight+baseOffset)/(8*sizeof(internal_));
 						//if baseOffset goes past negative,assume 0 IF there is a reminder 
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
