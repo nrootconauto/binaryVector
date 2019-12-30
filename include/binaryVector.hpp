@@ -86,7 +86,7 @@
 					}
 				public:
 					//or
-					binaryVector& operator |=(binaryVector& other) {
+					template<class vector> binaryVector& operator |=(binaryVector<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//go though and or
 						for(auto i=baseOffset;i!=minSize;i++) {
@@ -96,7 +96,7 @@
 						return *this;
 					}
 					//xor !!!
-					binaryVector& operator ^=(binaryVector& other) {
+					template<class vector> binaryVector& operator ^=(binaryVector<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//
 						for(auto i=baseOffset;i!=minSize;i++) {
@@ -107,7 +107,7 @@
 						return *this;
 					}
 					//
-					binaryVector& operator &=(binaryVector& other) {
+					template<class vector> binaryVector& operator &=(binaryVector<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//
 						for(auto i=baseOffset;i!=minSize;i++) {
@@ -286,6 +286,7 @@
 								//move left X internals
 								internalVec.writeType(i,carryRegister);
 								//BREAK IF GOING TO GO BEFORE FIRST THING
+								std::cout<<"I:"<<I<<std::endl;
 								if(I==0)
 									break;
 							}
@@ -388,122 +389,156 @@
 						//if baseOffset goes past negative,assume 0 IF there is a reminder 
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
+						//raimder of the width
+						auto widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
+						//===function to make end mask
+						auto endMask=[&](auto Xinternal)->internal_ {
+							//boundary is after the highest addreable Xinternal
+							auto boundary=this->firstXinternalInParent()+this->size();
+							//trims the view to not see past the mask
+							const internal_ ones=~0;
+							if(Xinternal+1==boundary)
+								return ones>>(8*sizeof(internal_)-widthRemainder);
+							else if(Xinternal>=boundary)
+								return 0;
+							return ones;
+						};
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
 						if(Xinternals+1<parent->internals().size()) {
-							firstHalf=(parent->internals().readType(Xinternals+1))<<(8*sizeof(internal_)-remainder);
+							firstHalf=((parent->internals().readType(Xinternals+1))&endMask(Xinternals+1))<<(8*sizeof(internal_)-remainder);
 						}
 						//=== second half 
 						if(Xinternals<parent->internals().size()) {
-							lastHalf=(parent->internals().readType(Xinternals))>>remainder;
+							lastHalf=((parent->internals().readType(Xinternals))&endMask(Xinternals))>>remainder;
 						}
 						return firstHalf|lastHalf;
 					}
 					signed long firstXinternalInParent() {
 						return (this->baseOffset+this->iterOffset)/(8*sizeof(internal_));
 					}
-					void writeType(size_t offset_,internal_ value) {
+					void writeType(signed long offset_,internal_ value) {
 						//do nothign if no parent
 						if(parent==nullptr)
 							return;
 						//find the last Xinternals that can be addressed with th e
 						signed long maximumAdressableInternal;
 						auto lastBit=(this->baseOffset+this->width());
-						
 						//
 						auto offset=baseOffset+offset_*sizeof(internal_)*8;
 						auto Xinternals=offset/(8*sizeof(internal_));
 						auto remainder=offset%(8*sizeof(internal_));
 						auto& internals=parent->internals();
 						const internal_ ones=~(internal_)0;
-						if(Xinternals<internals.size()) {
-							auto leftOver=internals.readType(Xinternals)&(ones>>(sizeof(internal_)*8-remainder));
-							internals.writeType(Xinternals,(value<<(remainder))|leftOver);
+						//remainder of the width in bits
+						auto widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
+						//boundary is after maximum addresable boundary
+						auto boundary=this->firstXinternalInParent();
+						//assume boundary is at end of parent if is -1
+						if(this->size()==-1)
+							boundary=internals.size();
+						else
+							boundary+=this->size();
+						//function to apply "End" mask
+						auto endMask=[&](signed long index)->internal_ {
+							const auto typeWidth=8*sizeof(internal_);
+							//boundary is after maximum addresable boundary
+							if(index+1==boundary)
+								return (ones<<(widthRemainder));
+							return ones;
+							};
+							//
+							if(Xinternals<internals.size()) {
+								internal_ mask=(ones>>(sizeof(internal_)*8-remainder))|endMask(Xinternals);
+								//apply mask to old vvalue
+								auto leftOver=internals.readType(Xinternals)&mask;
+								internals.writeType(Xinternals,((value<<(remainder))&~mask)|leftOver);
+							}
+							if(Xinternals+1<internals.size()) {
+								internal_ mask=(ones<<remainder);
+								auto leftOver=internals.readType(Xinternals+1)&mask;
+								internals.writeType(Xinternals+1,((value>>(sizeof(internal_)*8-remainder))|leftOver)&((Xinternals+1>=boundary)?0:0xff));
+							}
+							//clip if writing on the last Internal
+							if(Xinternals>=this->parent->internals().size()-1) {
+								parent->clipEndExtraBits();
+							}
 						}
-						if(Xinternals+1<internals.size()) {
-							auto leftOver=internals.readType(Xinternals+1)&(ones<<remainder);
-							internals.writeType(Xinternals+1,(value>>(sizeof(internal_)*8-remainder))|leftOver);
-						}
-						//clip if writing on the last Internal
-						if(Xinternals>=this->parent->internals().size()-1) {
-							parent->clipEndExtraBits();
-						}
-					}
 					//iterator stuff;
 					internal_ operator* () {
-						return this->readType(0);
-					}
-					viewAddressor& operator++() {
-						iterOffset+=8*sizeof(internal_);
-						return *this;
-					}
-					viewAddressor& operator--() {
-						iterOffset-=8*sizeof(internal_);
-						return *this;
-					}
-					bool operator==(viewAddressor& other) {
-						return parent==other->parent&&(baseOffset+iterOffset)==(other->baseOffset+other->iterOffset);
-					}
-					bool operator!=(viewAddressor&other) {
-						return !(*this==other);
-					}
-					//
-					friend std::ostream& operator<<(std::ostream& out,viewAddressor& view) {
-						//span in internals to read from
-						const size_t sizeInBits=view.parent->size();
-						size_t Xinternals=(sizeInBits-view.iterOffset-view.baseOffset)/(8*sizeof(internal_));
-						size_t remainder=(sizeInBits-view.iterOffset-view.baseOffset)%(8*sizeof(internal_));
-						//if there are remaining bits
-						Xinternals+=remainder?1:0;
-						std::string str;
-						//got through the internals
-						for(size_t i=0;i!=Xinternals*8*sizeof(internal_);i+=sizeof(internal_)*8)
-							for(size_t b=0;b!=(8*sizeof(internal_))/4;b++)
-								str=nibbleTable[0x0f&(view.readType(i)>>4*b)]+str;
-						//stream it
-						out<<str;
-						return out;
-					};
-					size_t size() {
-						const auto typeWidth=8*sizeof(internal_);
-						//return 0 if no parent
-						if(this->parent==nullptr)
-							return 0;
-						//add one size if there is a remaidner
-						auto addOne=((this->parent->size()-iterOffset-baseOffset)%typeWidth)?1:0;
-						//if no width is specified,use parents width
-						if(this->width()==-1)
-							return (this->parent->size()-iterOffset-baseOffset)/typeWidth+addOne;
+							return this->readType(0);
+						}
+						viewAddressor& operator++() {
+							iterOffset+=8*sizeof(internal_);
+							return *this;
+						}
+						viewAddressor& operator--() {
+							iterOffset-=8*sizeof(internal_);
+							return *this;
+						}
+						bool operator==(viewAddressor& other) {
+							return parent==other->parent&&(baseOffset+iterOffset)==(other->baseOffset+other->iterOffset);
+						}
+						bool operator!=(viewAddressor&other) {
+							return !(*this==other);
+						}
 						//
-						return this->width()/typeWidth;
-					}
-					//dummy
-					void resize(size_t size) {
-					}
-					vectorType& baseContent() {
-						return parent->internals();
-					}
-					size_t width() {
-						return viewSize;
-					}
-					binaryVector<internal_,vectorType>* parent;
-				private:
-					size_t viewSize;
-					size_t baseOffset;
-					size_t iterOffset;
-			};
-			//
-			template<typename internal,typename vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
-				public:
-					binaryVectorView(binaryVector<internal,vectorType>& parent,int offset=0,size_t width=-1) {
-						this->internals()=viewAddressor<internal>(&parent,offset,width);
-					}
-					binaryVectorView();
-					binaryVectorView(binaryVectorView& other) =delete;
-					binaryVectorView(size_t sizeInBits)= delete;
-					binaryVectorView(internal* items,size_t count=-1) = delete;
-			};
-	}
+						friend std::ostream& operator<<(std::ostream& out,viewAddressor& view) {
+							//span in internals to read from
+							const size_t sizeInBits=view.parent->size();
+							size_t Xinternals=(sizeInBits-view.iterOffset-view.baseOffset)/(8*sizeof(internal_));
+							size_t remainder=(sizeInBits-view.iterOffset-view.baseOffset)%(8*sizeof(internal_));
+							//if there are remaining bits
+							Xinternals+=remainder?1:0;
+							std::string str;
+							//got through the internals
+							for(size_t i=0;i!=Xinternals*8*sizeof(internal_);i+=sizeof(internal_)*8)
+								for(size_t b=0;b!=(8*sizeof(internal_))/4;b++)
+									str=nibbleTable[0x0f&(view.readType(i)>>4*b)]+str;
+							//stream it
+							out<<str;
+							return out;
+						};
+						size_t size() {
+							const auto typeWidth=8*sizeof(internal_);
+							//return 0 if no parent
+							if(this->parent==nullptr)
+								return 0;
+							//add one size if there is a remaidner
+							auto addOne=((this->parent->size()-iterOffset-baseOffset)%typeWidth)?1:0;
+							//if no width is specified,use parents width
+							if(this->width()==-1)
+								return (this->parent->size()-iterOffset-baseOffset)/typeWidth+addOne;
+							//
+							return this->width()/typeWidth+addOne;
+						}
+						//dummy
+						void resize(size_t size) {
+						}
+						vectorType& baseContent() {
+							return parent->internals();
+						}
+						size_t width() {
+							return viewSize;
+						}
+						binaryVector<internal_,vectorType>* parent;
+					private:
+						size_t viewSize;
+						size_t baseOffset;
+						size_t iterOffset;
+					};
+					//
+					template<typename internal,typename vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
+						public:
+							binaryVectorView(binaryVector<internal,vectorType>& parent,int offset=0,size_t width=-1) {
+								this->internals()=viewAddressor<internal>(&parent,offset,width);
+							}
+							binaryVectorView();
+							binaryVectorView(binaryVectorView& other) =delete;
+							binaryVectorView(size_t sizeInBits)= delete;
+							binaryVectorView(internal* items,size_t count=-1) = delete;
+					};
+			}
 	//stream stuff;
 	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVector<internal,vectorType> thing) {
 		std::string str;

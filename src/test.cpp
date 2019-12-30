@@ -3,8 +3,8 @@
 	
 	int main() {
 		binaryVector::binaryVector<unsigned char> vec(8*3);
-		vec.write(0,0xff);
-		binaryVector::binaryVectorView<unsigned char> view(vec,4);
+		vec.write(0,0b11111111);
+		binaryVector::binaryVectorView<unsigned char> view(vec,4,3);
 		vec<<=10;
 		vec>>=10;
 		std::cout<<"Hello World zero:"<<view<<std::endl;
