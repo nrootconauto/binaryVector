@@ -305,10 +305,10 @@
 							if(internalVec.size()-1>lastTowardsZero)
 								perXinternal(internalVec.size()-1,&internalVector::writeType);
 							//the actual loop with no boundary checks
-							for(auto I=internalVec.size()-2;I>=lastTowardsZero;I--)
+							for(signed long I=internalVec.size()-2;I>=lastTowardsZero;I--)
 								perXinternal(I,&internalVector::_writeType);
 							//fill rest with 0s
-							for(auto I=0;I<Xinternals;I++)
+							for(signed long I=0;I<Xinternals;I++)
 								internalVec._writeType(I,0);
 						}
 						this->clipEndExtraBits();
@@ -316,13 +316,13 @@
 					}
 					binaryVector& operator>>= (signed long bits) {
 						//how many internals the shift spans
-						auto Xinternals=bits/(sizeof(internal)*8);
-						auto remainder=bits%(sizeof(internal)*8);
+						signed long Xinternals=bits/(sizeof(internal)*8);
+						signed long remainder=bits%(sizeof(internal)*8);
 						internal leftOverBits=0;
 						//go foward in for statement (do all internals (except the last) without a boundary check)
-						auto i=0;
+						signed long i=0;
 						for(;i<=internalVec.size()-2-Xinternals;i++) {
-							auto index=i+Xinternals;
+							signed long index=i+Xinternals;
 							if(index+1<internalVec.size()) {
 								//shift to get remianing bits,then shift to begining of next internal
 								leftOverBits=internalVec._readType(index+1)<<sizeof(internal)*8-remainder;
@@ -334,12 +334,15 @@
 						//go the last inernal with bounds checking
 						if(internalVec.size()-1==i+Xinternals) {
 							internalVec.writeType(i,internalVec.readType(i+Xinternals)>>remainder|leftOverBits);
-						} else {
-							//wipe the rest of the internals with zeros
-							for(auto I=internalVec.size()-2;I>=i;I--)
-								internalVec._writeType(i,0);
+							//go past the write
+							i++;
+						}
+						//wipe the rest of the internals with zeros
+						if(i<internalVec.size()) {
+							for(signed long I=internalVec.size()-2;I>=i;I--)
+								internalVec._writeType(I,0);
 							//write last with boundary check
-							internalVec.writeType(i,0);
+							internalVec.writeType(internalVec.size()-1,0);
 						}
 						//clip
 						this->clipEndExtraBits();
