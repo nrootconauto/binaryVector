@@ -414,8 +414,8 @@
 						//trims the view to not see past the mask
 						const internal_ ones=~0;
 						internal_ mask;
-						if(Xinternal==boundary)
-							mask=ones>>sizeInBits-widthRemainder; //make sure if remainder doesnt pass into next byte if there is no reminder;
+						if(Xinternal+1==boundary)
+							mask=ones>>(widthRemainder?sizeInBits-widthRemainder:0); //make sure if remainder doesnt pass into next byte if there is no reminder;
 						else if(Xinternal>=boundary)
 							return 0;
 						else
@@ -427,7 +427,8 @@
 					}
 				public:
 					//constructor
-					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0,size_t width_=-1): parent(parent_), baseOffset(offset_), iterOffset(0), viewSize(width_) {}
+					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent(parent_), baseOffset(offset_), iterOffset(0), viewSize(width_) {
+					}
 					internal_ _readType(signed long offset_) {
 						return this->readType(offset_);
 					}
@@ -451,7 +452,7 @@
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
 						if(Xinternals+1<parent->internals().size()) {
-							firstHalf=(parent->internals().readType(Xinternals+1)&~this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-remainder;
+							firstHalf=(parent->internals().readType(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-remainder;
 						}
 						//=== second half 
 						if(Xinternals<parent->internals().size()) {
@@ -494,7 +495,7 @@
 							}
 							if(Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, remainder, widthRemainder);
-								internal_ leftOver=internals.readType(Xinternals+1)&~mask;
+								internal_ leftOver=internals.readType(Xinternals+1)&((mask)&(ones<<remainder)); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
 								internals.writeType(Xinternals+1, (value>>(sizeof(internal_)*8-remainder)&mask|leftOver));
 							}
 							//clip if writing on the last Internal
@@ -556,14 +557,16 @@
 						vectorType& baseContent() {
 							return parent->internals();
 						}
-						size_t width() {
-							return viewSize;
+						signed long  width() {
+							if(this->viewSize==-1)
+								this->viewSize=this->baseContent().size()-this->baseOffset;
+							return this->viewSize;
 						}
 						binaryVector<internal_,vectorType>* parent;
 					private:
-						size_t viewSize;
-						size_t baseOffset;
-						size_t iterOffset;
+						signed long viewSize;
+						signed long baseOffset;
+						signed long  iterOffset;
 					};
 					//
 					template<typename internal,typename vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
@@ -582,8 +585,9 @@
 		std::string str;
 		//got through the internals
 		for(signed long Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
-			for(signed long b=0;b!=(8*sizeof(internal))/4;b++)
+			for(signed long b=0;b!=(8*sizeof(internal))/4;b++) {
 				str=binaryVector::nibbleTable[0x0f&(thing.read(Xinternal)>>4*b)]+str;
+			}
 		//stream it
 		out<<str;
 		return out;
