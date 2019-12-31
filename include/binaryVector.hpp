@@ -65,7 +65,7 @@
 				private:
 					std::vector<type> container;
 			};
-			//binary Vector
+		//binary Vector
 			template<typename internal=size_t,class internalVector=addressor<internal>> class binaryVector {
 				public:
 					//binary operators
@@ -283,29 +283,31 @@
 							//amount of remaining bits  after shift
 							signed long remainder=bits%(sizeof(internal)*8);
 							//find the last internal(towards 0) that will affect the binaryVector
-							signed long lastTowardsZero=((signed long)internalVec.size())-Xinternals-(remainder?1:0)-1;
-							if(lastTowardsZero<0)
-								lastTowardsZero=0;
+							signed long lastTowardsZero=(signed long)Xinternals;
+							//find the last internal(towards end) that will be affected;
+							signed long lastTowardsEnd=this->internalVec.size()-(remainder?1:0)-Xinternals;
+							if(lastTowardsEnd<0)
+								lastTowardsEnd=0;
 							//OPTIMIZATION:boundedCheck(for binaryVectorViews) will be used on "last" element to ensure doesnt write past last bit
 							auto perXinternal=[&](signed long i,void (internalVector::*fp)(signed long,internal))->void {
 								//assume 0 if carring over before first bit(Xinternals-1 must not (when subtracted) be before 0)
-								if(i-Xinternals-1>=internalVec.size())
+								if(i-Xinternals-1<0)
 									carryOver=0;
 								else
 									carryOver=internalVec._readType(i-Xinternals-1)>>(sizeof(internal)*8-remainder);
 								//put in register
-								if(i-Xinternals>=0&&i-Xinternals<internalVec.size())
-									carryRegister=(internalVec._readType(i-Xinternals)<<remainder)|carryOver;
-								else
-									carryRegister=carryOver;
+								carryRegister=(internalVec._readType(i-Xinternals)<<remainder)|carryOver;
 								//move left X internals
 								(internalVec.*fp)(i,carryRegister);
 							};
+							//wipe those past the affected
+							for(signed long I=internalVec.size()-1;I>=lastTowardsEnd+1;I--)
+								internalVec._writeType(I,0);
 							//do the last element with a boundarycheck
-							if(internalVec.size()-1>=lastTowardsZero)
-								perXinternal(internalVec.size()-1,&internalVector::writeType);
+							if(internalVec.size()-1>=lastTowardsEnd)
+								perXinternal(lastTowardsEnd,&internalVector::writeType);
 							//the actual loop with no boundary checks
-							for(signed long I=internalVec.size()-2;I>=lastTowardsZero;I--)
+							for(signed long I=lastTowardsEnd-1;I>=lastTowardsZero;I--)
 								perXinternal(I,&internalVector::_writeType);
 							//fill rest with 0s
 							for(signed long I=0;I<Xinternals;I++)
@@ -407,7 +409,7 @@
 					//constructor
 					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0,size_t width_=-1): parent(parent_), baseOffset(offset_), iterOffset(0), viewSize(width_) {}
 					internal_ _readType(signed long offset_) {
-						this->_readType(offset_);
+						return this->readType(offset_);
 					}
 					void _writeType(signed long offset_,internal_ value) {
 						this->writeType(offset_,value);
