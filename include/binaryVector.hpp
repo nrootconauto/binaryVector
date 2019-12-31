@@ -273,7 +273,7 @@
 					binaryVector& operator <<=(signed long bits) {
 						internal carryRegister;
 						internal carryOver;
-						auto Xinternals=bits/(sizeof(internal)*8);
+						signed long Xinternals=bits/(sizeof(internal)*8);
 						//end bit is pushed past end,clear binaryVector
 						if(Xinternals>internalVec.size()) {
 							for(auto i=internalVec.size()-1;i--;)
@@ -281,11 +281,11 @@
 							return *this;
 						} else {
 							//amount of remaining bits  after shift
-							auto remainder=bits%(sizeof(internal)*8);
+							signed long remainder=bits%(sizeof(internal)*8);
 							//find the last internal(towards 0) that will affect the binaryVector
-							auto lastTowardsZero=((signed long)internalVec.size())-Xinternals-1;
+							signed long lastTowardsZero=((signed long)internalVec.size())-Xinternals-1;
 							if(lastTowardsZero<0)
-								lastTowardsZero=-1;
+								lastTowardsZero=0;
 							//OPTIMIZATION:boundedCheck(for binaryVectorViews) will be used on "last" element to ensure doesnt write past last bit
 							auto perXinternal=[&](signed long i,void (internalVector::*fp)(signed long,internal))->void {
 								//assume 0 if carring over before first bit(Xinternals-1 must not (when subtracted) be before 0)
@@ -305,7 +305,7 @@
 							if(internalVec.size()-1>lastTowardsZero)
 								perXinternal(internalVec.size()-1,&internalVector::writeType);
 							//the actual loop with no boundary checks
-							for(auto I=internalVec.size()-2;I>lastTowardsZero;I--)
+							for(auto I=internalVec.size()-2;I>=lastTowardsZero;I--)
 								perXinternal(I,&internalVector::_writeType);
 							//fill rest with 0s
 							for(auto I=0;I<Xinternals;I++)
@@ -382,7 +382,7 @@
 					internalVector& internals() {
 						return internalVec;
 					}
-					size_t size() {
+					signed long size() {
 						return this->bitCount;
 					}
 					void clipEndExtraBits() {
@@ -410,21 +410,21 @@
 						this->writeType(offset_,value);
 					}
 					internal_ readType(signed long offset_) {
-						auto timesEight=offset_*8*sizeof(internal_);
+						signed long timesEight=offset_*8*sizeof(internal_);
 						//make sure not addressing a negatice value(and see if there is room for a reaiminder)
 						if(baseOffset>2*8*sizeof(internal_)+timesEight)
 							return 0;
-						auto remainder=(baseOffset)%(8*sizeof(internal_));
-						auto Xinternals=(timesEight+baseOffset)/(8*sizeof(internal_));
+						signed long remainder=(baseOffset)%(8*sizeof(internal_));
+						signed long Xinternals=(timesEight+baseOffset)/(8*sizeof(internal_));
 						//if baseOffset goes past negative,assume 0 IF there is a reminder 
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
 						//raimder of the width
-						auto widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
+						signed long widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
 						//===function to make end mask
 						auto endMask=[&](auto Xinternal)->internal_ {
 							//boundary is after the highest addreable Xinternal
-							auto boundary=this->firstXinternalInParent()+this->size();
+							signed long boundary=this->firstXinternalInParent()+this->size();
 							//trims the view to not see past the mask
 							const internal_ ones=~0;
 							if(Xinternal+1==boundary)
@@ -453,17 +453,17 @@
 							return;
 						//find the last Xinternals that can be addressed with th e
 						signed long maximumAdressableInternal;
-						auto lastBit=(this->baseOffset+this->width());
+						signed long lastBit=(this->baseOffset+this->width());
 						//
-						auto offset=baseOffset+offset_*sizeof(internal_)*8;
-						auto Xinternals=offset/(8*sizeof(internal_));
-						auto remainder=offset%(8*sizeof(internal_));
+						signed long offset=baseOffset+offset_*sizeof(internal_)*8;
+						signed long Xinternals=offset/(8*sizeof(internal_));
+						signed long remainder=offset%(8*sizeof(internal_));
 						auto& internals=parent->internals();
 						const internal_ ones=~(internal_)0;
 						//remainder of the width in bits
-						auto widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
+						signed long widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
 						//boundary is after maximum addresable boundary
-						auto boundary=this->firstXinternalInParent();
+						signed long boundary=this->firstXinternalInParent();
 						//assume boundary is at end of parent if is -1
 						if(this->size()==-1)
 							boundary=internals.size();
@@ -471,7 +471,7 @@
 							boundary+=this->size();
 						//function to apply "End" mask
 						auto endMask=[&](signed long index)->internal_ {
-							const auto typeWidth=8*sizeof(internal_);
+							const signed long typeWidth=8*sizeof(internal_);
 							//boundary is after maximum addresable boundary
 							if(index+1==boundary)
 								return (ones<<(widthRemainder));
@@ -481,13 +481,13 @@
 							if(Xinternals<internals.size()) {
 								internal_ mask=(ones>>(sizeof(internal_)*8-remainder))|endMask(Xinternals);
 								//apply mask to old vvalue
-								auto leftOver=internals.readType(Xinternals)&mask;
+								internal_ leftOver=internals.readType(Xinternals)&mask;
 								internals.writeType(Xinternals,((value<<(remainder))&~mask)|leftOver);
 							}
 							if(Xinternals+1<internals.size()) {
 								internal_ mask=(ones<<remainder);
-								auto leftOver=internals.readType(Xinternals+1)&mask;
-								internals.writeType(Xinternals+1,((value>>(sizeof(internal_)*8-remainder))|leftOver)&((Xinternals+1>=boundary)?0:0xff));
+								internal_ leftOver=internals.readType(Xinternals+1)&mask;
+								internals.writeType(Xinternals+1, ((value>>(sizeof(internal_)*8-remainder))|leftOver) &((Xinternals+1>=boundary)?0:0xff));
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {
@@ -515,9 +515,9 @@
 						//
 						friend std::ostream& operator<<(std::ostream& out,viewAddressor& view) {
 							//span in internals to read from
-							const size_t sizeInBits=view.parent->size();
-							size_t Xinternals=(sizeInBits-view.iterOffset-view.baseOffset)/(8*sizeof(internal_));
-							size_t remainder=(sizeInBits-view.iterOffset-view.baseOffset)%(8*sizeof(internal_));
+							const signed long sizeInBits=view.parent->size();
+							signed long  Xinternals=(sizeInBits-view.iterOffset-view.baseOffset)/(8*sizeof(internal_));
+							signed long remainder=(sizeInBits-view.iterOffset-view.baseOffset)%(8*sizeof(internal_));
 							//if there are remaining bits
 							Xinternals+=remainder?1:0;
 							std::string str;
@@ -530,12 +530,12 @@
 							return out;
 						};
 						signed long size() {
-							const auto typeWidth=8*sizeof(internal_);
+							const signed long typeWidth=8*sizeof(internal_);
 							//return 0 if no parent
 							if(this->parent==nullptr)
 								return 0;
 							//add one size if there is a remaidner
-							auto addOne=((this->parent->size()-iterOffset-baseOffset)%typeWidth)?1:0;
+							signed long addOne=((this->parent->size()-iterOffset-baseOffset)%typeWidth)?1:0;
 							//if no width is specified,use parents width
 							if(this->width()==-1)
 								return (this->parent->size()-iterOffset-baseOffset)/typeWidth+addOne;
@@ -573,8 +573,8 @@
 	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVector<internal,vectorType> thing) {
 		std::string str;
 		//got through the internals
-		for(size_t Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
-			for(size_t b=0;b!=(8*sizeof(internal))/4;b++)
+		for(signed long Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
+			for(signed long b=0;b!=(8*sizeof(internal))/4;b++)
 				str=binaryVector::nibbleTable[0x0f&(thing.read(Xinternal)>>4*b)]+str;
 		//stream it
 		out<<str;
