@@ -27,22 +27,30 @@
 			};
 			//addressor
 			template<typename type> class addressor {
-				public:
-					type readType(size_t index) {
+					public:
+					//DOES NOT BOUND CHECK
+					type _readType(signed long index) {
+						return container[index];
+					}
+					//DOES NOT BONUD CHECK
+					void  _writeType(signed long index,type value) {
+						container[index]=value;
+					}
+					type readType(signed long index) {
 						if(index<0)
 							return 0;
 						if(index>=this->container.size())
 							return 0;
 						return container[index];
 					}
-					void writeType(size_t index,type value) {
+					void writeType(signed long index,type value) {
 						if(index<0)
 							return;
 						if(index>=this->container.size())
 							return;
 						container[index]=value;
 					}
-					size_t size() {
+					signed long size() {
 						return container.size();
 					}
 					void resize(size_t size) {
@@ -66,7 +74,7 @@
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						//copy over
 						for(int i=0;i!=this->internals().size();i++)
-							temp.write(i,~this->read(i));
+							temp.internals()._writeType(i,~this->read(i));
 						//
 						temp.clipEndExtraBits();
 						return temp;
@@ -90,7 +98,7 @@
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//go though and or
 						for(auto i=baseOffset;i!=minSize;i++) {
-							this->write(i,this->read(i)|other->read(i));
+							this->internalVec._writeType(i,this->internalVec._readType(i)|other->internals()._readType(i));
 						}
 						this->clipEndExtraBits();
 						return *this;
@@ -100,7 +108,7 @@
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//
 						for(auto i=baseOffset;i!=minSize;i++) {
-							this->write(i,this->read(i)^other->read(i));
+							this->internalVec._writeType(i,this->internalVec._readType(i)^other->internals()._readType(i));
 						}
 						//
 						this->clipEndExtraBits();
@@ -109,13 +117,16 @@
 					//
 					template<class vector> binaryVector& operator &=(binaryVector<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
-						//
+						//erase the zeros before baseOffset
+						for(auto i=baseOffset-1;i--;)
+							this->internalVec._writeType(i,0);
+						//do the ands
 						for(auto i=baseOffset;i!=minSize;i++) {
-							this->write(i,this->read(i)|other->read(i));
+							this->internalVec._writeType(i,this->internalVec._readType(i)|other->read(i));
 						}
 						//zeroify this past the minSize
 						for(auto i=minSize;i!=this->internalVec.size();i++)
-							this->write(i,0);
+							this->internalVec._writeType(i,0);
 						this->clipEndExtraBits();
 						return *this;
 					}
@@ -149,7 +160,7 @@
 						this->resize(offset+other.size());
 						if(sizeof(otherInternal)==sizeof(internal)) {
 							for(int i=0;i!=other.internals().size();i++)
-								this->write(i,other.read(i));
+								this->internalVec._writeType(i,other.read(i));
 							return;
 						}
 						auto currentBit=offset;
@@ -265,35 +276,40 @@
 						auto Xinternals=bits/(sizeof(internal)*8);
 						//end bit is pushed past end,clear binaryVector
 						if(Xinternals>internalVec.size()) {
-							for(auto i=0;i!=internalVec.size();i++)
-								internalVec.writeType(i,0);
+							for(auto i=internalVec.size()-1;i--;)
+								internalVec._writeType(i,0);
 							return *this;
 						} else {
 							//amount of remaining bits  after shift
 							auto remainder=bits%(sizeof(internal)*8);
-							for(auto I=internalVec.size()-1;true;I--) {
-								auto& i=I;
+							//find the last internal(towards 0) that will affect the binaryVector
+							auto lastTowardsZero=((signed long)internalVec.size())-Xinternals-1;
+							if(lastTowardsZero<0)
+								lastTowardsZero=-1;
+							//OPTIMIZATION:boundedCheck(for binaryVectorViews) will be used on "last" element to ensure doesnt write past last bit
+							auto perXinternal=[&](signed long i,void (internalVector::*fp)(signed long,internal))->void {
 								//assume 0 if carring over before first bit(Xinternals-1 must not (when subtracted) be before 0)
 								if(i-Xinternals-1<0||i-Xinternals-1>=internalVec.size())
 									carryOver=0;
 								else
-									carryOver=internalVec.readType(i-Xinternals-1)>>(sizeof(internal)*8-remainder);
+									carryOver=internalVec._readType(i-Xinternals-1)>>(sizeof(internal)*8-remainder);
 								//put in register
 								if(i-Xinternals>=0&&i-Xinternals<internalVec.size())
-									carryRegister=(internalVec.readType(i-Xinternals)<<remainder)|carryOver;
+									carryRegister=(internalVec._readType(i-Xinternals)<<remainder)|carryOver;
 								else
 									carryRegister=carryOver;
 								//move left X internals
-								internalVec.writeType(i,carryRegister);
-								//BREAK IF GOING TO GO BEFORE FIRST THING
-								std::cout<<"I:"<<I<<std::endl;
-								if(I==0)
-									break;
-							}
+								(internalVec.*fp)(i,carryRegister);
+							};
+							//do the last element with a boundarycheck
+							if(internalVec.size()-1>lastTowardsZero)
+								perXinternal(internalVec.size()-1,&internalVector::writeType);
+							//the actual loop with no boundary checks
+							for(auto I=internalVec.size()-2;I>lastTowardsZero;I--)
+								perXinternal(I,&internalVector::_writeType);
 							//fill rest with 0s
-							for(auto I=0;I<Xinternals;I++) {
-								internalVec.writeType(I,0);
-							}
+							for(auto I=0;I<Xinternals;I++)
+								internalVec._writeType(I,0);
 						}
 						this->clipEndExtraBits();
 						return *this;
@@ -303,21 +319,29 @@
 						auto Xinternals=bits/(sizeof(internal)*8);
 						auto remainder=bits%(sizeof(internal)*8);
 						internal leftOverBits=0;
-						//go foward in for statement
-						for(auto i=0;i<=internalVec.size();i++) {
+						//go foward in for statement (do all internals (except the last) without a boundary check)
+						auto i=0;
+						for(;i<=internalVec.size()-2-Xinternals;i++) {
 							auto index=i+Xinternals;
-							if(index+1>=0&&index+1<internalVec.size()) {
+							if(index+1<internalVec.size()) {
 								//shift to get remianing bits,then shift to begining of next internal
-								leftOverBits=internalVec.readType(i+Xinternals+1)<<(sizeof(internal)*8-remainder);
+								leftOverBits=internalVec._readType(index+1)<<sizeof(internal)*8-remainder;
 							} else
 								leftOverBits=0;
 							//apply shift and clip
-							if(index>=0&&index<internalVec.size())
-								internalVec.writeType(i,(internalVec.readType(i+Xinternals)>>remainder)|leftOverBits);
-							else
-								internalVec.writeType(i,0);
-							//
+							internalVec._writeType(i,internalVec._readType(index)>>remainder|leftOverBits);
 						}
+						//go the last inernal with bounds checking
+						if(internalVec.size()-1==i+Xinternals) {
+							internalVec.writeType(i,internalVec.readType(i+Xinternals)>>remainder|leftOverBits);
+						} else {
+							//wipe the rest of the internals with zeros
+							for(auto I=internalVec.size()-2;I>=i;I--)
+								internalVec._writeType(i,0);
+							//write last with boundary check
+							internalVec.writeType(i,0);
+						}
+						//clip
 						this->clipEndExtraBits();
 						return *this;
 					}
@@ -379,6 +403,12 @@
 				public:
 					//constructor
 					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0,size_t width_=-1): parent(parent_), baseOffset(offset_), iterOffset(0), viewSize(width_) {}
+					internal_ _readType(signed long offset_) {
+						this->_readType(offset_);
+					}
+					void _writeType(signed long offset_,internal_ value) {
+						this->writeType(offset_,value);
+					}
 					internal_ readType(signed long offset_) {
 						auto timesEight=offset_*8*sizeof(internal_);
 						//make sure not addressing a negatice value(and see if there is room for a reaiminder)
@@ -499,7 +529,7 @@
 							out<<str;
 							return out;
 						};
-						size_t size() {
+						signed long size() {
 							const auto typeWidth=8*sizeof(internal_);
 							//return 0 if no parent
 							if(this->parent==nullptr)
