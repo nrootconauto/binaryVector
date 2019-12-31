@@ -283,13 +283,13 @@
 							//amount of remaining bits  after shift
 							signed long remainder=bits%(sizeof(internal)*8);
 							//find the last internal(towards 0) that will affect the binaryVector
-							signed long lastTowardsZero=((signed long)internalVec.size())-Xinternals-1;
+							signed long lastTowardsZero=((signed long)internalVec.size())-Xinternals-(remainder?1:0)-1;
 							if(lastTowardsZero<0)
 								lastTowardsZero=0;
 							//OPTIMIZATION:boundedCheck(for binaryVectorViews) will be used on "last" element to ensure doesnt write past last bit
 							auto perXinternal=[&](signed long i,void (internalVector::*fp)(signed long,internal))->void {
 								//assume 0 if carring over before first bit(Xinternals-1 must not (when subtracted) be before 0)
-								if(i-Xinternals-1<0||i-Xinternals-1>=internalVec.size())
+								if(i-Xinternals-1>=internalVec.size())
 									carryOver=0;
 								else
 									carryOver=internalVec._readType(i-Xinternals-1)>>(sizeof(internal)*8-remainder);
@@ -302,7 +302,7 @@
 								(internalVec.*fp)(i,carryRegister);
 							};
 							//do the last element with a boundarycheck
-							if(internalVec.size()-1>lastTowardsZero)
+							if(internalVec.size()-1>=lastTowardsZero)
 								perXinternal(internalVec.size()-1,&internalVector::writeType);
 							//the actual loop with no boundary checks
 							for(signed long I=internalVec.size()-2;I>=lastTowardsZero;I--)
@@ -333,7 +333,7 @@
 						}
 						//go the last inernal with bounds checking
 						if(internalVec.size()-1==i+Xinternals) {
-							internalVec.writeType(i,internalVec.readType(i+Xinternals)>>remainder|leftOverBits);
+							internalVec.writeType(i,internalVec.readType(i+Xinternals)>>remainder);
 							//go past the write
 							i++;
 						}
