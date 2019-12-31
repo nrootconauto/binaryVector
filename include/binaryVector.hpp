@@ -285,7 +285,9 @@
 							//find the last internal(towards 0) that will affect the binaryVector
 							signed long lastTowardsZero=(signed long)Xinternals;
 							//find the last internal(towards end) that will be affected;
-							signed long lastTowardsEnd=this->internalVec.size()-(remainder?1:0)-Xinternals;
+							signed long lastTowardsEnd=internalVec.size()-Xinternals;
+							if(lastTowardsEnd==internalVec.size())
+								lastTowardsEnd--;
 							if(lastTowardsEnd<0)
 								lastTowardsEnd=0;
 							//OPTIMIZATION:boundedCheck(for binaryVectorViews) will be used on "last" element to ensure doesnt write past last bit
@@ -301,7 +303,7 @@
 								(internalVec.*fp)(i,carryRegister);
 							};
 							//wipe those past the affected
-							for(signed long I=internalVec.size()-1;I>=lastTowardsEnd+1;I--)
+							for(signed long I=internalVec.size()-1;I>lastTowardsEnd+1;I--)
 								internalVec._writeType(I,0);
 							//do the last element with a boundarycheck
 							if(internalVec.size()-1>=lastTowardsEnd)
