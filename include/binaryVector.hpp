@@ -407,6 +407,24 @@
 					internalVector internalVec;
 			};
 			template<class internal_,class vectorType=addressor<internal_>> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
+					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) {
+						const signed long sizeInBits=8*sizeof(internal_);
+						//boundary is after the highest addreable Xinternal
+						signed long boundary=this->firstXinternalInParent()+this->size();
+						//trims the view to not see past the mask
+						const internal_ ones=~0;
+						internal_ mask;
+						if(Xinternal==boundary)
+							mask=ones>>sizeInBits-widthRemainder; //make sure if remainder doesnt pass into next byte if there is no reminder;
+						else if(Xinternal>=boundary)
+							return 0;
+						else
+							mask=ones;
+						//if at first addressable bye,add maks
+						if(Xinternal==baseOffset/sizeInBits)
+							mask&=(ones<<remainder);
+						return mask;
+					}
 				public:
 					//constructor
 					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0,size_t width_=-1): parent(parent_), baseOffset(offset_), iterOffset(0), viewSize(width_) {}
@@ -417,37 +435,27 @@
 						this->writeType(offset_,value);
 					}
 					internal_ readType(signed long offset_) {
-						signed long timesEight=offset_*8*sizeof(internal_);
+						const signed long sizeInBits=8*sizeof(internal_);
+						signed long timesEight=offset_*sizeInBits;
 						//make sure not addressing a negatice value(and see if there is room for a reaiminder)
-						if(baseOffset>2*8*sizeof(internal_)+timesEight)
+						if(baseOffset>2*sizeInBits+timesEight)
 							return 0;
-						signed long remainder=(baseOffset)%(8*sizeof(internal_));
+						signed long remainder=(baseOffset)%sizeInBits;
 						signed long Xinternals=(timesEight+baseOffset)/(8*sizeof(internal_));
 						//if baseOffset goes past negative,assume 0 IF there is a reminder 
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
 						//raimder of the width
-						signed long widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
+						signed long widthRemainder=(this->width()+this->baseOffset)%sizeInBits;
 						//===function to make end mask
-						auto endMask=[&](auto Xinternal)->internal_ {
-							//boundary is after the highest addreable Xinternal
-							signed long boundary=this->firstXinternalInParent()+this->size();
-							//trims the view to not see past the mask
-							const internal_ ones=~0;
-							if(Xinternal+1==boundary)
-								return ones>>(8*sizeof(internal_)-widthRemainder);
-							else if(Xinternal>=boundary)
-								return 0;
-							return ones;
-						};
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
 						if(Xinternals+1<parent->internals().size()) {
-							firstHalf=((parent->internals().readType(Xinternals+1))&endMask(Xinternals+1))<<(8*sizeof(internal_)-remainder);
+							firstHalf=(parent->internals().readType(Xinternals+1)&~this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-remainder;
 						}
 						//=== second half 
 						if(Xinternals<parent->internals().size()) {
-							lastHalf=((parent->internals().readType(Xinternals))&endMask(Xinternals))>>remainder;
+							lastHalf=(parent->internals().readType(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>remainder;
 						}
 						return firstHalf|lastHalf;
 					}
@@ -477,24 +485,17 @@
 						else
 							boundary+=this->size();
 						//function to apply "End" mask
-						auto endMask=[&](signed long index)->internal_ {
-							const signed long typeWidth=8*sizeof(internal_);
-							//boundary is after maximum addresable boundary
-							if(index+1==boundary)
-								return (ones<<(widthRemainder));
-							return ones;
-							};
-							//
+						//
 							if(Xinternals<internals.size()) {
-								internal_ mask=(ones>>(sizeof(internal_)*8-remainder))|endMask(Xinternals);
+								internal_ mask=endMask(Xinternals,remainder,widthRemainder);
 								//apply mask to old vvalue
-								internal_ leftOver=internals.readType(Xinternals)&mask;
-								internals.writeType(Xinternals,((value<<(remainder))&~mask)|leftOver);
+								internal_ leftOver=internals.readType(Xinternals)&~mask;
+								internals.writeType(Xinternals,((value<<remainder)&mask)|leftOver);
 							}
 							if(Xinternals+1<internals.size()) {
-								internal_ mask=(ones<<remainder);
-								internal_ leftOver=internals.readType(Xinternals+1)&mask;
-								internals.writeType(Xinternals+1, ((value>>(sizeof(internal_)*8-remainder))|leftOver) &((Xinternals+1>=boundary)?0:0xff));
+								internal_ mask=endMask(Xinternals+1, remainder, widthRemainder);
+								internal_ leftOver=internals.readType(Xinternals+1)&~mask;
+								internals.writeType(Xinternals+1, (value>>(sizeof(internal_)*8-remainder)&mask|leftOver));
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {
