@@ -315,7 +315,7 @@
 							for(signed long I=0;I<Xinternals;I++)
 								internalVec._writeType(I,0);
 						}
-						this->clipEndExtraBits();
+						//this->clipEndExtraBits();
 						return *this;
 					}
 					binaryVector& operator>>= (signed long bits) {
@@ -333,7 +333,8 @@
 							} else
 								leftOverBits=0;
 							//apply shift and clip
-							internalVec._writeType(i,internalVec._readType(index)>>remainder|leftOverBits);
+							internal value=internalVec._readType(index)>>remainder;
+							internalVec._writeType(i,value|leftOverBits);
 						}
 						//go the last inernal with bounds checking
 						if(internalVec.size()-1==i+Xinternals) {
@@ -349,7 +350,7 @@
 							internalVec.writeType(internalVec.size()-1,0);
 						}
 						//clip
-						this->clipEndExtraBits();
+						//this->clipEndExtraBits();
 						return *this;
 					}
 					//iterator class
@@ -579,7 +580,7 @@
 							binaryVectorView();
 							binaryVectorView(binaryVectorView& other) =delete;
 							binaryVectorView(size_t sizeInBits)= delete;
-							binaryVectorView(internal* items,size_t count=-1) = delete;
+							binaryVectorView(internal* items,size_t count=-1) = delete;		
 					};
 			}
 	//stream stuff;

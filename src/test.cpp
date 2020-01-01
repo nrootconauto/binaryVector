@@ -9,16 +9,19 @@
 		std::cout<<vec<<std::endl;
 		//vec>>=5+8;
 		
-		view.internals().writeType(1,0);
+		view.internals().writeType(1,0b10000000);
 		std::cout<<"abc: "<<view<<std::endl;
 		std::cout<<"132:"<<view<<std::endl;
-		view.internals().writeType(1, 0b11000011);
+		view.internals().writeType(0,0b10000000);
 		std::cout<<"sdfgfgdfh:"<<view<<std::endl;
-		vec<<=3;
 		std::cout<<"gsdgsdfg:"<<view<<std::endl;
-		view.write(0,2|4|16);
+		view.write(2,0b00010000);
 		std::cout<<"Hello World one :"<<view<<std::endl;
-		view>>=1;
+		//view.write(0,64);
+		//view.write(1,64);
+		//view.write(2,64);
+		//view.internals().parent->clipEndExtraBits();
+		view>>=5;
 		std::cout<<"Hello World two :"<<view<<std::endl;
 		return 0;
 	}
