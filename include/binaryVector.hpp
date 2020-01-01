@@ -75,6 +75,19 @@
 		//binary Vector
 			template<typename internal=size_t, class internalVector=addressor<internal>> class binaryVector {
 				public:
+					//write into a primitive
+					template<typename toLoadInto> toLoadInto loadIntoPrimitive(signed long index) {
+						toLoadInto retVal=0;
+						internal temp;
+						long currentByte=0;
+						//per byte
+						for(signed long i=0;i<sizeof(retVal);i++) {
+							temp=this->read(index++);
+							retVal|=temp<<(8*currentByte);
+							currentByte+=sizeof(internal);
+						}
+						return retVal;
+					}
 					//binary operators
 					binaryVector<internal,addressor<internal>> operator ~() {
 						//make a blank new binaryVector
@@ -322,7 +335,7 @@
 							for(signed long I=0;I<Xinternals;I++)
 								internalVec._writeType(I,0);
 						}
-						//this->clipEndExtraBits();
+						this->clipEndExtraBits();
 						return *this;
 					}
 					binaryVector& operator>>= (signed long bits) {
@@ -357,7 +370,7 @@
 							internalVec.writeType(internalVec.size()-1,0);
 						}
 						//clip
-						//this->clipEndExtraBits();
+						this->clipEndExtraBits();
 						return *this;
 					}
 					//iterator class
@@ -438,8 +451,8 @@
 					//constructor
 					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVector<internal_>*)parent_), baseOffset(offset_), viewSize(width_) {
 					}
-					binaryVector<internal_>& getParent() {
-						return *(binaryVector<internal_>*)this->parent;
+					template<class type> type& getParent() {
+						return *(type*)this->parent;
 					}
 					internal_ _readType(signed long offset_) {
 						return this->readType(offset_);

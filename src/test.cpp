@@ -2,23 +2,11 @@
 #include "../include/binaryVector.hpp"
 	
 	int main() {
-		binaryVector::binaryVector<unsigned char> vec(8*3);
-		vec.write(0,0);
-		binaryVector::binaryVectorView<unsigned char> view(vec,3);
-		//vec<<=5+8;
-		std::cout<<vec<<std::endl;
-		//vec>>=5+8;
-		
-		view.internals().writeType(1,0b11100001);
-		std::cout<<"abc: "<<view<<std::endl;
-		std::cout<<"132:"<<view<<std::endl;
-		view.internals().writeType(0,0b10000000);
-		std::cout<<"sdfgfgdfh:"<<view<<std::endl;
-		std::cout<<"gsdgsdfg:"<<view<<std::endl;
-		view.write(2,0b10011001);
-		std::cout<<"Hello World one :"<<view<<std::endl;
-		view>>=9;
-		std::cout<<"Hello World two :"<<view<<std::endl;
+		binaryVector::binaryVector<unsigned char> vec(8*sizeof(unsigned int));
+		vec.write(0, 0xff);
+		vec.write(1, 1);
+		unsigned int me=vec.loadIntoPrimitive<unsigned int>(0);
+		std::cout<<me<<std::endl;
 		return 0;
 	}
  
