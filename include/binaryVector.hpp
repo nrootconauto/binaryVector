@@ -62,11 +62,18 @@
 					addressor& baseContent() {
 						return *this;
 					}
+					template<class binVec> binVec& getParent() {
+						return *(binVec*)this->_parent;
+					}
+					addressor(void* vec) {
+						this->_parent=vec;
+					};
 				private:
+					void* _parent;
 					std::vector<type> container;
 			};
 		//binary Vector
-			template<typename internal=size_t,class internalVector=addressor<internal>> class binaryVector {
+			template<typename internal=size_t, class internalVector=addressor<internal>> class binaryVector {
 				public:
 					//binary operators
 					binaryVector<internal,addressor<internal>> operator ~() {
@@ -250,12 +257,12 @@
 						this->clipEndExtraBits();
 					}
 					//constructor
-					binaryVector(size_t sizeInBits) {
+					binaryVector(size_t sizeInBits):internalVec((void*)this) {
 						this->resize(sizeInBits);
 					}
-					binaryVector() {}
+					binaryVector():internalVec((void*)this) {}
 					//constructor
-					binaryVector(internal* items,size_t count=-1) {
+					binaryVector(internal* items,size_t count=-1):internalVec((void*)this) {
 						//if count if not defined(==-1),get the array length
 						if(count==-1)
 							count=sizeof(items)/sizeof(internal);
@@ -266,7 +273,7 @@
 						this->bitCount=count*8*sizeof(internal);
 					}
 					//constructor
-					template<class otherInteral> binaryVector(binaryVector<otherInteral>& other) {
+					template<class otherInteral> binaryVector(binaryVector<otherInteral>& other):internalVec((void*)this) {
 						this->copy(other);
 					}
 					//
@@ -394,9 +401,10 @@
 						return this->bitCount;
 					}
 					void clipEndExtraBits() {
-						auto& baseContent=this->internalVec.baseContent();
+						auto& master=this->internals().template getParent<binaryVector<internal,addressor<internal>>>();
+						auto& baseContent=master.internals();
 						auto totalBits=8*sizeof(internal)*baseContent.size();
-						auto toClip=totalBits-this->size();
+						auto toClip=totalBits-master.size();
 						//makes a internal full of ones then shifts it right to make a mask
 						auto backIndex=internalVec.size()-1; //last elem
 						const internal ones=~(internal)0;
@@ -428,7 +436,10 @@
 					}
 				public:
 					//constructor
-					viewAddressor(binaryVector<internal_>* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent(parent_), baseOffset(offset_), iterOffset(0), viewSize(width_) {
+					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVector<internal_>*)parent_), baseOffset(offset_), viewSize(width_) {
+					}
+					binaryVector<internal_>& getParent() {
+						return *(binaryVector<internal_>*)this->parent;
 					}
 					internal_ _readType(signed long offset_) {
 						return this->readType(offset_);
@@ -462,7 +473,7 @@
 						return firstHalf|lastHalf;
 					}
 					signed long firstXinternalInParent() {
-						return (this->baseOffset+this->iterOffset)/(8*sizeof(internal_));
+						return (this->baseOffset)/(8*sizeof(internal_));
 					}
 					void writeType(signed long offset_,internal_ value) {
 						//do nothign if no parent
@@ -511,15 +522,15 @@
 							return this->readType(0);
 						}
 						viewAddressor& operator++() {
-							iterOffset+=8*sizeof(internal_);
+							baseOffset+=8*sizeof(internal_);
 							return *this;
 						}
 						viewAddressor& operator--() {
-							iterOffset-=8*sizeof(internal_);
+							baseOffset-=8*sizeof(internal_);
 							return *this;
 						}
 						bool operator==(viewAddressor& other) {
-							return parent==other->parent&&(baseOffset+iterOffset)==(other->baseOffset+other->iterOffset);
+							return parent==other->parent&&(baseOffset)==(other->baseOffset+other->iterOffset);
 						}
 						bool operator!=(viewAddressor&other) {
 							return !(*this==other);
@@ -528,8 +539,8 @@
 						friend std::ostream& operator<<(std::ostream& out,viewAddressor& view) {
 							//span in internals to read from
 							const signed long sizeInBits=view.parent->size();
-							signed long  Xinternals=(sizeInBits-view.iterOffset-view.baseOffset)/(8*sizeof(internal_));
-							signed long remainder=(sizeInBits-view.iterOffset-view.baseOffset)%(8*sizeof(internal_));
+							signed long  Xinternals=(sizeInBits-view.baseOffset)/(8*sizeof(internal_));
+							signed long remainder=(sizeInBits-view.baseOffset)%(8*sizeof(internal_));
 							//if there are remaining bits
 							Xinternals+=remainder?1:0;
 							std::string str;
@@ -547,10 +558,10 @@
 							if(this->parent==nullptr)
 								return 0;
 							//add one size if there is a remaidner
-							signed long addOne=((this->parent->size()-iterOffset-baseOffset)%typeWidth)?1:0;
+							signed long addOne=((this->parent->size()-baseOffset)%typeWidth)?1:0;
 							//if no width is specified,use parents width
 							if(this->width()==-1)
-								return (this->parent->size()-iterOffset-baseOffset)/typeWidth+addOne;
+								return (this->parent->size()-baseOffset)/typeWidth+addOne;
 							//
 							return this->width()/typeWidth+addOne;
 						}
@@ -569,7 +580,6 @@
 					private:
 						signed long viewSize;
 						signed long baseOffset;
-						signed long  iterOffset;
 					};
 					//
 					template<typename internal,typename vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
