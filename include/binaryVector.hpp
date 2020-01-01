@@ -305,10 +305,10 @@
 							//find the last internal(towards 0) that will affect the binaryVector
 							signed long lastTowardsZero=(signed long)Xinternals;
 							//find the last internal(towards end) that will be affected;
-							signed long lastTowardsEnd=internalVec.size()-Xinternals;
-							if(lastTowardsEnd==internalVec.size())
-								lastTowardsEnd--;
-							if(lastTowardsEnd<0)
+							signed long lastTowardsEnd;
+							if(Xinternals<internalVec.size())
+								lastTowardsEnd=internalVec.size()-1;
+							else
 								lastTowardsEnd=0;
 							//OPTIMIZATION:boundedCheck(for binaryVectorViews) will be used on "last" element to ensure doesnt write past last bit
 							auto perXinternal=[&](signed long i,void (internalVector::*fp)(signed long,internal))->void {
