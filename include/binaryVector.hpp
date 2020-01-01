@@ -490,13 +490,15 @@
 							if(Xinternals<internals.size()) {
 								internal_ mask=endMask(Xinternals,remainder,widthRemainder);
 								//apply mask to old vvalue
-								internal_ leftOver=internals.readType(Xinternals)&~mask;
+								internal_ leftOver=internals.readType(Xinternals);
+								leftOver&=(mask&ones>>sizeof(internal_)*8-remainder);
 								internals.writeType(Xinternals,((value<<remainder)&mask)|leftOver);
 							}
 							if(Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, remainder, widthRemainder);
-								internal_ leftOver=internals.readType(Xinternals+1)&((mask)&(ones<<remainder)); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
-								internals.writeType(Xinternals+1, (value>>(sizeof(internal_)*8-remainder)&mask|leftOver));
+								internal_ leftOver=internals.readType(Xinternals+1);
+								leftOver&=((mask)&(ones<<remainder)); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
+								internals.writeType(Xinternals+1, ((value>>sizeof(internal_)*8-remainder)&mask|leftOver));
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {
@@ -559,7 +561,7 @@
 						}
 						signed long  width() {
 							if(this->viewSize==-1)
-								this->viewSize=this->baseContent().size()-this->baseOffset;
+								this->viewSize=this->parent->size()-this->baseOffset;
 							return this->viewSize;
 						}
 						binaryVector<internal_,vectorType>* parent;
