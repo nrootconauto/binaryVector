@@ -13,10 +13,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #recusivly get files in ./src/ and ./headers/
-file(GLOB_RECURSE libSources "./src/*.cpp" "./include/*.hpp")
-list(FILTER libSources INCLUDE REGEX "^[^\.].+\.cpp$")
+file(GLOB_RECURSE testSources "./src/*.cpp")
+list(FILTER testSources INCLUDE REGEX "^[^\.].+\.cpp$")
 
 #add the files to the project
-add_executable(binaryGraph ${libSources})
+add_executable(binaryGraph ./src/test.cpp)
 #add bitarray lib
 target_include_directories(binaryGraph PRIVATE ./ext/bitarray/)
