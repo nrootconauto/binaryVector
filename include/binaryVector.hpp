@@ -75,6 +75,16 @@
 		//binary Vector
 			template<typename internal=size_t, class internalVector=addressor<internal>> class binaryVector {
 				public:
+					template<typename T> void loadValue(T& value) {
+						internal temp=0;
+						unsigned long index=0;
+						for(unsigned int  byte=0;byte<sizeof(value);byte+=sizeof(internal)) {
+							this->internalVec._writeType(index++,value>>(8*byte));
+						}
+						//clear the unused bytes
+						for(;index!=this->internalVec.size();index++)
+							this->internalVec._writeType(index,0);
+					}
 					//write into a primitive
 					template<typename toLoadInto> toLoadInto loadIntoPrimitive(signed long index) {
 						toLoadInto retVal=0;
@@ -94,9 +104,33 @@
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						//copy over
 						for(int i=0;i!=this->internals().size();i++)
-							temp.internals()._writeType(i,~this->read(i));
+							temp.internals()._writeType(i,~this->internalVec._readType(i));
 						//
 						temp.clipEndExtraBits();
+						return temp;
+					}
+					binaryVector<internal,addressor<internal>> operator&(binaryVector& other) {
+						auto temp=binaryVector<internal,addressor<internal>>(this->size());
+						//copy over and apply & operator
+						auto [start,end]=this->getAffectedRange(other);
+						for(auto i=start;i!=end;i++)
+							temp.internals()._writeType(i,this->internalVec._readType(i)&other->other.internals()._readType(i));
+						return temp;
+					}
+					binaryVector<internal,addressor<internal>> operator|(binaryVector& other) {
+						auto temp=binaryVector<internal,addressor<internal>>(this->size());
+						temp.copy(*this);
+						auto [start,end]=this->getAffectedRange(other);
+						for(auto i=start;i!=end;i++)
+							temp.internals()._writeType(i,this->internalVec._readType(i)|other->other.internals()._readType(i));
+						return temp;
+					}
+					binaryVector<internal,addressor<internal>> operator^ (binaryVector& other) {
+						auto temp=binaryVector<internal,addressor<internal>>(this->size());
+						temp.copy(*this);
+						auto [start,end]=this->getAffectedRange(other);
+						for(auto i=start;i!=end;i++)
+							temp.internals()._writeType(i,this->internalVec._readType(i)^other->other.internals()._readType(i));
 						return temp;
 					}
 				private:
@@ -114,6 +148,7 @@
 					}
 				public:
 					//or
+					//binary equality operators
 					template<class vector> binaryVector& operator |=(binaryVector<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//go though and or
