@@ -78,6 +78,7 @@
 					template<typename T> void loadValue(T& value) {
 						internal temp=0;
 						unsigned long index=0;
+						this->resize(sizeof(value)*8);
 						for(unsigned int  byte=0;byte<sizeof(value);byte+=sizeof(internal)) {
 							this->internalVec._writeType(index++,value>>(8*byte));
 						}
@@ -92,7 +93,7 @@
 						long currentByte=0;
 						//per byte
 						for(signed long i=0;i<sizeof(retVal);i++) {
-							temp=this->read(index++);
+							temp=this->readBlock(index++);
 							retVal|=temp<<(8*currentByte);
 							currentByte+=sizeof(internal);
 						}
@@ -177,7 +178,7 @@
 							this->internalVec._writeType(i,0);
 						//do the ands
 						for(auto i=baseOffset;i!=minSize;i++) {
-							this->internalVec._writeType(i,this->internalVec._readType(i)|other->read(i));
+							this->internalVec._writeType(i,this->internalVec._readType(i)|other->readBlock(i));
 						}
 						//zeroify this past the minSize
 						for(auto i=minSize;i!=this->internalVec.size();i++)
@@ -186,10 +187,10 @@
 						return *this;
 					}
 					//access operator
-					internal read(size_t index) {
+					internal readBlock(size_t index) {
 						return this->internalVec.readType(index);
 					}
-					void write(size_t index,size_t value) {
+					void writeBlock(size_t index,size_t value) {
 						return this->internalVec.writeType(index,value);
 					}
 					//rezie for bits
@@ -215,7 +216,7 @@
 						this->resize(offset+other.size());
 						if(sizeof(otherInternal)==sizeof(internal)) {
 							for(int i=0;i!=other.internals().size();i++)
-								this->internalVec._writeType(i,other.read(i));
+								this->internalVec._writeType(i,other.readBlock(i));
 							return;
 						}
 						auto currentBit=offset;
@@ -551,13 +552,13 @@
 								internal_ mask=endMask(Xinternals,remainder,widthRemainder);
 								//apply mask to old vvalue
 								internal_ leftOver=internals.readType(Xinternals);
-								leftOver&=(mask&ones>>sizeof(internal_)*8-remainder);
+								leftOver&=~(mask&ones>>sizeof(internal_)*8-remainder);
 								internals.writeType(Xinternals,((value<<remainder)&mask)|leftOver);
 							}
 							if(Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, remainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
-								leftOver&=((mask)&(ones<<remainder)); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
+								leftOver&=~((mask)&(ones<<remainder)); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
 								internals.writeType(Xinternals+1, ((value>>sizeof(internal_)*8-remainder)&mask|leftOver));
 							}
 							//clip if writing on the last Internal
@@ -565,41 +566,6 @@
 								parent->clipEndExtraBits();
 							}
 						}
-					//iterator stuff;
-					internal_ operator* () {
-							return this->readType(0);
-						}
-						viewAddressor& operator++() {
-							baseOffset+=8*sizeof(internal_);
-							return *this;
-						}
-						viewAddressor& operator--() {
-							baseOffset-=8*sizeof(internal_);
-							return *this;
-						}
-						bool operator==(viewAddressor& other) {
-							return parent==other->parent&&(baseOffset)==(other->baseOffset+other->iterOffset);
-						}
-						bool operator!=(viewAddressor&other) {
-							return !(*this==other);
-						}
-						//
-						friend std::ostream& operator<<(std::ostream& out,viewAddressor& view) {
-							//span in internals to read from
-							const signed long sizeInBits=view.parent->size();
-							signed long  Xinternals=(sizeInBits-view.baseOffset)/(8*sizeof(internal_));
-							signed long remainder=(sizeInBits-view.baseOffset)%(8*sizeof(internal_));
-							//if there are remaining bits
-							Xinternals+=remainder?1:0;
-							std::string str;
-							//got through the internals
-							for(size_t i=0;i!=Xinternals*8*sizeof(internal_);i+=sizeof(internal_)*8)
-								for(size_t b=0;b!=(8*sizeof(internal_))/4;b++)
-									str=nibbleTable[0x0f&(view.readType(i)>>4*b)]+str;
-							//stream it
-							out<<str;
-							return out;
-						};
 						signed long size() {
 							const signed long typeWidth=8*sizeof(internal_);
 							//return 0 if no parent
@@ -647,7 +613,7 @@
 		//got through the internals
 		for(signed long Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
 			for(signed long b=0;b!=(8*sizeof(internal))/4;b++) {
-				str=binaryVector::nibbleTable[0x0f&(thing.read(Xinternal)>>4*b)]+str;
+				str=binaryVector::nibbleTable[0x0f&(thing.readBlock(Xinternal)>>4*b)]+str;
 			}
 		//stream it
 		out<<str;

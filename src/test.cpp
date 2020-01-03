@@ -6,6 +6,33 @@
 #include "doctest.h"
 	
 	typedef unsigned  int testType;
+	TEST_CASE_TEMPLATE_DEFINE("View tests",T,view_tests) {
+		const unsigned int viewIndex=10;
+		const unsigned int viewWidth=16;
+		const unsigned int size=sizeof(unsigned int)*8;
+		const unsigned int viewMask=0xffff<<viewIndex;
+		SUBCASE("view left shift") {
+			const int shiftAmount=1;
+			unsigned int value=0x1fefe860;
+			unsigned int originalValue=value;
+			binaryVector::binaryVector<T> vec(size);
+			binaryVector::binaryVectorView<T> view(vec,viewIndex,viewWidth);
+			vec.loadValue(value);
+			//view.writeBlock(1,0b10000001);
+			for(int i=0;i<viewWidth;i+=shiftAmount) {
+				auto result=view.template loadIntoPrimitive<unsigned int>(0);
+				//check the value of the window
+				std::cout<<"vec :"<<vec<<std::endl;
+				std::cout<<"view:"<<view<<std::endl;
+				REQUIRE_MESSAGE(result==((value&viewMask)>>viewIndex),"value");
+				//check value outside of the "window"
+				REQUIRE_MESSAGE((originalValue)==(vec.template loadIntoPrimitive<unsigned int>(0)),"value outsie of");
+				//
+				value>>=shiftAmount;
+				view>>=shiftAmount;
+			}
+		}
+	}
 	TEST_CASE_TEMPLATE_DEFINE("shift tests",T,shift_tests) {
 		const int shiftBy=2;
 		binaryVector::binaryVector<T> vec(8*sizeof(testType));
@@ -93,19 +120,5 @@
 		MESSAGE("Binary XOR works");
 	}
 	//
-	TEST_CASE_TEMPLATE_INVOKE(shift_tests,unsigned char);
-	/*
-	int main() {
-		//
-		binaryVector::binaryVector<unsigned char> vec(8*sizeof(unsigned int));
-		vec.write(0, 0xff);
-		vec.write(1, 1);
-		vec<<=16;
-		std::cout<<vec<<std::endl;
-		vec>>=17;
-		std::cout<<vec<<std::endl;
-		unsigned int me=vec.loadIntoPrimitive<unsigned int>(0);
-		std::cout<<me<<std::endl;
-		return 0;
-	}
-	*/
+	TEST_CASE_TEMPLATE_INVOKE(shift_tests,unsigned int);
+	TEST_CASE_TEMPLATE_INVOKE(view_tests,unsigned char);
