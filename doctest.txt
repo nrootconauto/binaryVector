@@ -1,0 +1,53 @@
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+
+TEST_CASE("name") {}
+CHECK
+WARN
+REQIORE
+SUBCASE("name") {}
+INFO("text")
+CHECK(zx)
+CHECK_MESSAGE(x,"messaefg")
+
+[Requrw|CHEVK|WARN]_THROWS[](cond)
+[REQUIRE|CHECK|WARN]_THROWS_AS(func,exetion type) //expected a type const y&
+_THROWS_WITH(func,value)
+_THROWS_WTIH_AS(func,value,type
+)
+
+==doctest::Aproximate(2.1).epsilon(0.01) //2.1 within 1%
+
+TEST_SUITE_BEGIN("name"
+	*doctest::description("")
+	*doctest::timeout(0.5));
+TEST_SUITE_END()
+
+TEST_CASE_TEMPLATE_DEFINE("name",TEMPLATE,ARGS,ETC...,test_id) {}
+TEST_CASE_TEMPLATE_APPLY(test_id, std::tuple<float, double>)
+
+TYPE_TO_STRING(std::vector<int>)
+
+FAIL("continues anyways"<<10)
+
+######[CLI]
+doctest --tc //lists test cases
+-lts //lists test suires
+
+-tc=*math*,*urils*,*wildcard pattern
+-tce=*exlucde wildcard*
+-ts=*test suite wildcard*
+-tse=*test suite exlude*
+
+-s //includes sucesses
+-cs case senseitiive
+
+#### string converstions
+tmeplate<> struct doctest::StringMaker<T> {
+	doctest::String convert(cosnt T& thing) {return "hello world"}
+}
+
+### cmake
+find_package(doctest REQUIRED)
+# or per target
+target_include_directories(my_target PUBLIC ${DOCTEST_INCLUDE_DIR})
+target_link_libraries(test PRIVATE doctest::doctest)

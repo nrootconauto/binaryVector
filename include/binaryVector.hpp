@@ -114,7 +114,7 @@
 						//copy over and apply & operator
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
-							temp.internals()._writeType(i,this->internalVec._readType(i)&other->other.internals()._readType(i));
+							temp.internals()._writeType(i,this->internalVec._readType(i)&other.internals()._readType(i));
 						return temp;
 					}
 					binaryVector<internal,addressor<internal>> operator|(binaryVector& other) {
@@ -122,7 +122,7 @@
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
-							temp.internals()._writeType(i,this->internalVec._readType(i)|other->other.internals()._readType(i));
+							temp.internals()._writeType(i,this->internalVec._readType(i)|other.internals()._readType(i));
 						return temp;
 					}
 					binaryVector<internal,addressor<internal>> operator^ (binaryVector& other) {
@@ -130,7 +130,7 @@
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
-							temp.internals()._writeType(i,this->internalVec._readType(i)^other->other.internals()._readType(i));
+							temp.internals()._writeType(i,this->internalVec._readType(i)^other.internals()._readType(i));
 						return temp;
 					}
 				private:
