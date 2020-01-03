@@ -31,22 +31,6 @@
 				value<<=shiftAmount;
 				view<<=shiftAmount;
 			}
-			/*
-			value=0x1fefe86;
-			vec.loadValue(value);
-			for(int i=0;i<viewWidth;i+=shiftAmount) {
-				auto result=view.template loadIntoPrimitive<unsigned int>(0);
-				//check the value of the window
-				std::cout<<"vec :"<<vec<<std::endl;
-				std::cout<<"view:"<<view<<std::endl;
-				REQUIRE_MESSAGE(((value&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
-				//check value outside of the "window"
-				REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
-				//
-				value<<=shiftAmount;
-				view<<=shiftAmount;
-			}
-			*/
 		}
 		SUBCASE("right view shifting") {
 			const int shiftAmount=1;
@@ -69,15 +53,24 @@
 		}
 		SUBCASE("bitwise And") {
 			unsigned int value=0xfe2324;
+			unsigned int originalValue=value;
 			unsigned char toApply=0x12;
-			binaryVector::binaryVector vec(sizeof(unsigned int)*8);
+			binaryVector::binaryVector<T> vec(sizeof(unsigned int)*8);
+			vec.template loadValue(originalValue);
+			binaryVector::binaryVector<T> byte(sizeof(unsigned int)*8);
+			byte.loadValue(toApply);
 			for(int i=0;i!=sizeof(unsigned int);i++) {
-				unsigned int result=value&(toApply<<i);
+				vec.template loadValue(originalValue);
 				binaryVector::binaryVectorView view(vec,i,sizeof(unsigned char)*8);
-				vec&view;
+				vec&=byte;
+				auto computedResult=vec.template loadIntoPrimitive<unsigned int>(0);
+				auto referenceResult=originalValue&(toApply<<i);
+				std::cout<<"Referce expected"<<referenceResult<<std::endl;
+				REQUIRE_MESSAGE(computedResult==referenceResult,"Bitwie and failed");
+				byte<<=1;
 			}
 			//slide the window and do an "&" operation
-		} 
+		}
 	}
 	TEST_CASE_TEMPLATE_DEFINE("shift tests",T,shift_tests) {
 		const int shiftBy=2;

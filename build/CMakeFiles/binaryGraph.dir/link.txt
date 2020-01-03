@@ -1,0 +1,1 @@
+/home/tc/.zapcc/build/bin/zapcc++  -g   CMakeFiles/binaryGraph.dir/src/test.cpp.o  -o binaryGraph 

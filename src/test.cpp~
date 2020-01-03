@@ -1,0 +1,9 @@
+#include <iostream>
+#include "../include/binaryVector.hpp"
+	
+	int main() {
+		binaryVector::binaryVector<unsigned char> vec(8);
+		vec[0]=0x0f;
+		std::cout<<"Hello World"<<std::endl;
+		return 0;
+	}

@@ -110,7 +110,7 @@
 						temp.clipEndExtraBits();
 						return temp;
 					}
-					template<class T> binaryVector<internal,addressor<internal>> operator&(T& other) {
+					template<class T> binaryVector operator&(binaryVector<internal,T>& other) {
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						//copy over and apply & operator
 						auto [start,end]=this->getAffectedRange(other);
@@ -118,7 +118,7 @@
 							temp.internals()._writeType(i,this->internalVec._readType(i)&other.internals()._readType(i));
 						return temp;
 					}
-					binaryVector<internal,addressor<internal>> operator|(binaryVector& other) {
+					template<class T> binaryVector operator|(binaryVector<internal,T>& other) {
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
@@ -126,7 +126,7 @@
 							temp.internals()._writeType(i,this->internalVec._readType(i)|other.internals()._readType(i));
 						return temp;
 					}
-					binaryVector<internal,addressor<internal>> operator^ (binaryVector& other) {
+					template<class T> binaryVector operator^ (binaryVector<internal,T>& other) {
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
@@ -174,14 +174,15 @@
 					template<class vector> binaryVector& operator &=(binaryVector<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//erase the zeros before baseOffset
-						for(auto i=baseOffset-1;i--;)
+						for(auto i=baseOffset-1;i>=0;i--)
 							this->internalVec._writeType(i,0);
 						//do the ands
-						for(auto i=baseOffset;i!=minSize;i++) {
-							this->internalVec._writeType(i,this->internalVec._readType(i)|other->readBlock(i));
+						for(auto i=baseOffset;i!=minSize+baseOffset;i++) {
+							this->internalVec._writeType(i,this->internalVec._readType(i)&other.readBlock(i));
 						}
+						std::cout<<minSize<<":"<<baseOffset<<std::endl;
 						//zeroify this past the minSize
-						for(auto i=minSize;i!=this->internalVec.size();i++)
+						for(auto i=minSize+baseOffset;i<this->internalVec.size();i++)
 							this->internalVec._writeType(i,0);
 						this->clipEndExtraBits();
 						return *this;
@@ -604,7 +605,10 @@
 							binaryVectorView();
 							binaryVectorView(binaryVectorView& other) =delete;
 							binaryVectorView(size_t sizeInBits)= delete;
-							binaryVectorView(internal* items,size_t count=-1) = delete;		
+							binaryVectorView(internal* items,size_t count=-1) = delete;
+							//template<class addressor> binaryVectorView operator&(binaryVector<internal,addressor>& other) {
+							//	return
+							//};
 					};
 			}
 	//stream stuff;

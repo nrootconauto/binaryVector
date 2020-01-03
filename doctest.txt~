@@ -1,0 +1,5 @@
+TEST_CASE("name") {}
+CHECK
+WARN
+REQIORE
+SUBCASE {}
