@@ -64,7 +64,7 @@
 				binaryVector::binaryVectorView view(vec,i,sizeof(unsigned char)*8);
 				vec&=byte;
 				auto computedResult=vec.template loadIntoPrimitive<unsigned int>(0);
-				auto referenceResult=originalValue&(toApply<<i);
+				auto referenceResult=originalValue&binaryVector::template virtualShift(byte,i);
 				std::cout<<"Referce expected"<<referenceResult<<std::endl;
 				REQUIRE_MESSAGE(computedResult==referenceResult,"Bitwie and failed");
 				byte<<=1;

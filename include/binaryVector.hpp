@@ -466,6 +466,7 @@
 					internalVector internalVec;
 			};
 			template<class internal_,class vectorType=addressor<internal_>> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
+					unsigned long writeOffset;
 					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) {
 						const signed long sizeInBits=8*sizeof(internal_);
 						//boundary is after the highest addreable Xinternal
@@ -486,13 +487,16 @@
 					}
 				public:
 					//constructor
-					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVector<internal_>*)parent_), baseOffset(offset_), viewSize(width_) {
+					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVector<internal_>*)parent_), baseOffset(offset_), viewSize(width_),writeOffset(0) {
 					}
 					template<class type> type& getParent() {
 						return *(type*)this->parent;
 					}
 					internal_ _readType(signed long offset_) {
 						return this->readType(offset_);
+					}
+					void applyVirtualOffset(signed long offset_) {
+						this->writeOffset+=offset_;
 					}
 					void _writeType(signed long offset_,internal_ value) {
 						this->writeType(offset_,value);
@@ -504,7 +508,7 @@
 						if(baseOffset>2*sizeInBits+timesEight)
 							return 0;
 						signed long remainder=(baseOffset)%sizeInBits;
-						signed long Xinternals=(timesEight+baseOffset)/(8*sizeof(internal_));
+						signed long Xinternals=(timesEight+baseOffset+this->writeOffset)/(8*sizeof(internal_));
 						//if baseOffset goes past negative,assume 0 IF there is a reminder 
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
@@ -513,11 +517,11 @@
 						//===function to make end mask
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
-						if(Xinternals+1<parent->internals().size()) {
+						if(Xinternals>=0&&Xinternals+1<parent->internals().size()) {
 							firstHalf=(parent->internals().readType(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-remainder;
 						}
 						//=== second half 
-						if(Xinternals<parent->internals().size()) {
+						if(Xinternals>=0&&Xinternals<parent->internals().size()) {
 							lastHalf=(parent->internals().readType(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>remainder;
 						}
 						return firstHalf|lastHalf;
@@ -531,9 +535,9 @@
 							return;
 						//find the last Xinternals that can be addressed with th e
 						signed long maximumAdressableInternal;
-						signed long lastBit=(this->baseOffset+this->width());
+						signed long lastBit=this->baseOffset+this->width();
 						//
-						signed long offset=baseOffset+offset_*sizeof(internal_)*8;
+						signed long offset=writeOffset+baseOffset+offset_*sizeof(internal_)*8;
 						signed long Xinternals=offset/(8*sizeof(internal_));
 						signed long remainder=offset%(8*sizeof(internal_));
 						auto& internals=parent->internals();
@@ -549,14 +553,14 @@
 							boundary+=this->size();
 						//function to apply "End" mask
 						//
-							if(Xinternals<internals.size()) {
+							if(Xinternals>=0&&Xinternals<internals.size()) {
 								internal_ mask=endMask(Xinternals,remainder,widthRemainder);
 								//apply mask to old vvalue
 								internal_ leftOver=internals.readType(Xinternals);
 								leftOver&=~(mask&ones<<remainder);
 								internals.writeType(Xinternals,((value<<remainder)&mask)|leftOver);
 							}
-							if(Xinternals+1<internals.size()) {
+							if(Xinternals>=0&&Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, remainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
 								leftOver&=~(mask&ones>>sizeof(internal_)*8-remainder); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
@@ -592,25 +596,28 @@
 							return this->viewSize;
 						}
 						binaryVector<internal_,vectorType>* parent;
-					private:
-						signed long viewSize;
-						signed long baseOffset;
-					};
-					//
-					template<typename internal,typename vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
-						public:
-							binaryVectorView(binaryVector<internal,vectorType>& parent,int offset=0,size_t width=-1) {
-								this->internals()=viewAddressor<internal>(&parent,offset,width);
-							}
-							binaryVectorView();
-							binaryVectorView(binaryVectorView& other) =delete;
-							binaryVectorView(size_t sizeInBits)= delete;
-							binaryVectorView(internal* items,size_t count=-1) = delete;
-							//template<class addressor> binaryVectorView operator&(binaryVector<internal,addressor>& other) {
-							//	return
-							//};
-					};
-			}
+				private:
+					signed long viewSize;
+					signed long baseOffset;
+			};
+			//
+			template<typename internal,class vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
+				public:
+					binaryVectorView(binaryVector<internal,vectorType>& parent,int offset=0,size_t width=-1) {
+						this->internals()=viewAddressor<internal>(&parent,offset,width);
+					}
+					binaryVectorView();
+					binaryVectorView(binaryVectorView& other) =delete;
+					binaryVectorView(size_t sizeInBits)= delete;
+					binaryVectorView(internal* items,size_t count=-1) = delete;
+					//template<class T,class base> binaryVectorView<T,base> friend virtualShift(binaryVectorView<T,base>& input,signed long offset);
+			};
+			template<typename T,class base> binaryVectorView<T,base> virtualShift(binaryVectorView<T,base>& input,signed long offset) {
+				binaryVectorView<T,base> retVal=input;
+				retVal.internals().applyVirtualOffset(offset);
+				return retVal;
+			};
+	}
 	//stream stuff;
 	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVector<internal,vectorType> thing) {
 		std::string str;
