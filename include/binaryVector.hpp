@@ -110,7 +110,7 @@
 						temp.clipEndExtraBits();
 						return temp;
 					}
-					binaryVector<internal,addressor<internal>> operator&(binaryVector& other) {
+					template<class T> binaryVector<internal,addressor<internal>> operator&(T& other) {
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						//copy over and apply & operator
 						auto [start,end]=this->getAffectedRange(other);
@@ -136,14 +136,14 @@
 					}
 				private:
 					//get affected range
-					std::pair<signed long,signed long> getAffectedRange(binaryVector& other) {
+					template<class otherAddressor> std::pair<signed long,signed long> getAffectedRange(binaryVector<internal,otherAddressor>& other) {
 						auto thisSize=this->internals().size();
 						auto otherSize=other.internals().size();
 						//choose the lower part
 						auto minSize=(thisSize<otherSize)?thisSize:otherSize;
 						//choose the maximum base offset
 						auto thisOffset=this->internalVec.firstXinternalInParent();
-						auto otherOffset=other.internalVec.firstXinternalInParent();
+						auto otherOffset=other.internals().firstXinternalInParent();
 						auto baseOffset=(thisOffset>otherOffset)?thisOffset:otherOffset;
 						return std::pair<signed long,signed long>(baseOffset,minSize);
 					}
