@@ -1,11 +1,11 @@
 #include <iostream>
 #include "../include/binaryVector.hpp"
-#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+	#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <vector>
 #include <utility>
-#include "doctest.h"
-	
+	#include "doctest.h"
 	typedef unsigned  int testType;
+	/*
 	TEST_CASE_TEMPLATE_DEFINE("View tests",T,view_tests) {
 		const unsigned int viewIndex=10;
 		const unsigned int viewWidth=16;
@@ -62,16 +62,16 @@
 			for(int i=0;i!=sizeof(unsigned int);i++) {
 				vec.template loadValue(originalValue);
 				binaryVector::binaryVectorView view(vec,i,sizeof(unsigned char)*8);
-				vec&=byte;
+				vec&=binaryVector::virtualShift(byte, i);
 				auto computedResult=vec.template loadIntoPrimitive<unsigned int>(0);
-				auto referenceResult=originalValue&binaryVector::template virtualShift(byte,i);
+				auto referenceResult=originalValue&toApply<<i;
 				std::cout<<"Referce expected"<<referenceResult<<std::endl;
 				REQUIRE_MESSAGE(computedResult==referenceResult,"Bitwie and failed");
-				byte<<=1;
 			}
 			//slide the window and do an "&" operation
 		}
 	}
+	*/
 	TEST_CASE_TEMPLATE_DEFINE("shift tests",T,shift_tests) {
 		const int shiftBy=2;
 		binaryVector::binaryVector<T> vec(8*sizeof(testType));
@@ -129,8 +129,8 @@
 				{0x1221,0x3214},
 				{0xefe23,0xffe1}
 			};
-			binaryVector::binaryVector vecA(8*sizeof(testType));
-			binaryVector::binaryVector vecB(8*sizeof(testType));
+			binaryVector::binaryVector<T> vecA(8*sizeof(testType));
+			binaryVector::binaryVector<T> vecB(8*sizeof(testType));
 			for(auto value:testValues) {
 				auto [aValue,bValue]=value;
 				vecA.loadValue(aValue);
@@ -146,8 +146,8 @@
 				{0x1221,0x3214},
 				{0xefe23,0xffe1}
 			};
-			binaryVector::binaryVector vecA(8*sizeof(testType));
-			binaryVector::binaryVector vecB(8*sizeof(testType));
+			binaryVector::binaryVector<testType> vecA(8*sizeof(testType));
+			binaryVector::binaryVector<testType> vecB(8*sizeof(testType));
 			for(auto value:testValues) {
 				auto [aValue,bValue]=value;
 				vecA.loadValue(aValue);
@@ -160,4 +160,4 @@
 	}
 	//
 	TEST_CASE_TEMPLATE_INVOKE(shift_tests,unsigned int);
-	TEST_CASE_TEMPLATE_INVOKE(view_tests,unsigned char);
+	//TEST_CASE_TEMPLATE_INVOKE(view_tests,unsigned char);
