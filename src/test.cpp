@@ -56,7 +56,7 @@
 			vec.template loadValue(originalValue);
 			binaryVector::binaryVector<T> byte(sizeof(unsigned int)*8);
 			byte.loadValue(toApply);
-			for(int i=0;i!=sizeof(unsigned int);i++) {
+			for(int i=0;i!=sizeof(unsigned int)*8;i++) {
 				vec.template loadValue(originalValue);
 				vec&=binaryVector::virtualShift(byte, -i);
 				std::cout<<"shifted byte"<<binaryVector::virtualShift(byte, -i)<<std::endl;

@@ -568,13 +568,13 @@
 						if(parent==nullptr)
 							return;
 						//
-						signed long offset=virtualOffset+baseOffset+offset_*timesEight;
+						signed long offset=baseOffset+offset_*timesEight;
 						signed long Xinternals=offset/timesEight;
 						signed long baseRemainder=(baseOffset+offset_*timesEight)%timesEight;
-						signed long remainder=offset%timesEight;
+						signed long remainder=baseOffset;
 						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
-						Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
-						remainder=(remainder<0)?timesEight+remainder:remainder;
+						//Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
+						//remainder=(remainder<0)?timesEight+remainder:remainder;
 						//
 						auto& internals=parent->internals();
 						const internal_ ones=~(internal_)0;
