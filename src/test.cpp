@@ -108,8 +108,8 @@
 				{0x1221,0x3214},
 				{0xefe23,0xffe1}
 			};
-			binaryVector::binaryVector vecA(8*sizeof(testType));
-			binaryVector::binaryVector vecB(8*sizeof(testType));
+			binaryVector::binaryVector<unsigned int> vecA(8*sizeof(testType));
+			binaryVector::binaryVector<unsigned int> vecB(8*sizeof(testType));
 			for(auto value:testValues) {
 				auto [aValue,bValue]=value;
 				vecA.loadValue(aValue);

@@ -55,7 +55,7 @@
 			};
 			//forward delcaration
 			//binary Vector
-			template<typename internal=size_t, class internalVector=addressor<internal>> class binaryVector {
+			template<typename internal=unsigned int, class internalVector=addressor<internal>> class binaryVectorBase {
 				public:
 					signed long blockStart() const {
 						return 0;
@@ -88,9 +88,9 @@
 						return this->internalVec.size();
 					}
 					//binary operators
-					binaryVector<internal,addressor<internal>> operator ~() const {
-						//make a blank new binaryVector
-						auto temp=binaryVector<internal,addressor<internal>>(this->size());
+					binaryVectorBase<internal,addressor<internal>> operator ~() const {
+						//make a blank new binaryVectorBase
+						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						//copy over
 						for(int i=0;i!=this->blockSize();i++)
 							temp.internals()._writeType(i,~this->internalVec._readType(i));
@@ -98,24 +98,24 @@
 						temp.clipEndExtraBits();
 						return temp;
 					}
-					template<class T> binaryVector operator&(const binaryVector<internal,T>& other) const {
-						auto temp=binaryVector<internal,addressor<internal>>(this->size());
+					template<class T> binaryVectorBase operator&(const binaryVectorBase<internal,T>& other) const {
+						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						//copy over and apply & operator
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
 							temp.internals()._writeType(i,this->internalVec._readType(i)&other.internalVec._readType(i));
 						return temp;
 					}
-					template<class T> binaryVector operator|(const binaryVector<internal,T>& other) const {
-						auto temp=binaryVector<internal,addressor<internal>>(this->size());
+					template<class T> binaryVectorBase operator|(const binaryVectorBase<internal,T>& other) const {
+						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
 							temp.internals()._writeType(i,this->internalVec._readType(i)|other.internalVec._readType(i));
 						return temp;
 					}
-					template<class T> binaryVector operator^ (const binaryVector<internal,T>& other) const {
-						auto temp=binaryVector<internal,addressor<internal>>(this->size());
+					template<class T> binaryVectorBase operator^ (const binaryVectorBase<internal,T>& other) const {
+						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
@@ -124,7 +124,7 @@
 					}
 				private:
 					//get affected range
-					template<class otherAddressor> std::pair<signed long,signed long> getAffectedRange(const binaryVector<internal,otherAddressor>& other) const {
+					template<class otherAddressor> std::pair<signed long,signed long> getAffectedRange(const binaryVectorBase<internal,otherAddressor>& other) const {
 						//choose the maximum base offset
 						auto thisOffset=this->blockStart();
 						auto otherOffset=other.blockStart();
@@ -141,7 +141,7 @@
 				public:
 					//or
 					//binary equality operators
-					template<class vector> binaryVector& operator |=(const binaryVector<internal,vector>& other) {
+					template<class vector> binaryVectorBase& operator |=(const binaryVectorBase<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//go though and or
 						for(auto i=baseOffset;i!=minSize;i++) {
@@ -151,7 +151,7 @@
 						return *this;
 					}
 					//xor !!!
-					template<class vector> binaryVector& operator ^=(const binaryVector<internal,vector>& other) {
+					template<class vector> binaryVectorBase& operator ^=(const binaryVectorBase<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//
 						for(auto i=baseOffset;i!=minSize;i++) {
@@ -162,7 +162,7 @@
 						return *this;
 					}
 					//
-					template<class vector> binaryVector& operator &=(const binaryVector<internal,vector>& other) {
+					template<class vector> binaryVectorBase& operator &=(const binaryVectorBase<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//erase the zeros before baseOffset
 						for(auto i=baseOffset-1;i>=0;i--)
@@ -204,7 +204,7 @@
 						this->clipEndExtraBits();
 					}
 					//internal is to be equal or lesser in size to otherInternal
-					template<typename otherInternal> void copy(const binaryVector<otherInternal>& other,int offset=0) {
+					template<typename otherInternal> void copy(const binaryVectorBase<otherInternal>& other,int offset=0) {
 						this->resize(offset+other.size());
 						if(sizeof(otherInternal)==sizeof(internal)) {
 							for(int i=0;i!=other.blockSize();i++)
@@ -298,12 +298,12 @@
 						this->clipEndExtraBits();
 					}
 					//constructor
-					binaryVector(size_t sizeInBits):internalVec(this) {
+					binaryVectorBase(size_t sizeInBits):internalVec(this) {
 						this->resize(sizeInBits);
 					}
-					binaryVector():internalVec((void*)this) {}
+					binaryVectorBase():internalVec((void*)this) {}
 					//constructor
-					binaryVector(internal* items,size_t count=-1):internalVec((void*)this) {
+					binaryVectorBase(internal* items,size_t count=-1):internalVec((void*)this) {
 						//if count if not defined(==-1),get the array length
 						if(count==-1)
 							count=sizeof(items)/sizeof(internal);
@@ -314,18 +314,18 @@
 						this->bitCount=count*8*sizeof(internal);
 					}
 					//constructor
-					template<class otherInteral> binaryVector(const binaryVector<otherInteral>& other):internalVec((void*)this) {
+					template<class otherInteral> binaryVectorBase(const binaryVectorBase<otherInteral>& other):internalVec((void*)this) {
 						this->copy(other);
 					}
 					//
-					binaryVector& operator <<=(signed long bits) {
+					binaryVectorBase& operator <<=(signed long bits) {
 						if(bits<0) {
 							return *this>>=-bits;
 						}
 						internal carryRegister;
 						internal carryOver;
 						signed long Xinternals=bits/(sizeof(internal)*8);
-						//end bit is pushed past end,clear binaryVector
+						//end bit is pushed past end,clear binaryVectorBase
 						if(Xinternals>internalVec.size()) {
 							for(auto i=internalVec.size()-1;i--;)
 								internalVec._writeType(i,0);
@@ -333,7 +333,7 @@
 						} else {
 							//amount of remaining bits  after shift
 							signed long remainder=bits%(sizeof(internal)*8);
-							//find the last internal(towards 0) that will affect the binaryVector
+							//find the last internal(towards 0) that will affect the binaryVectorBase
 							signed long lastTowardsZero=(signed long)Xinternals;
 							//find the last internal(towards end) that will be affected;
 							signed long lastTowardsEnd;
@@ -341,7 +341,7 @@
 								lastTowardsEnd=internalVec.size()-1;
 							else
 								lastTowardsEnd=0;
-							//OPTIMIZATION:boundedCheck(for binaryVectorViews) will be used on "last" element to ensure doesnt write past last bit
+							//OPTIMIZATION:boundedCheck(for binaryVectorBaseViews) will be used on "last" element to ensure doesnt write past last bit
 							auto perXinternal=[&](signed long i,void (internalVector::*fp)(signed long,internal))->void {
 								//assume 0 if carring over before first bit(Xinternals-1 must not (when subtracted) be before 0)
 								if(i-Xinternals-1<0)
@@ -369,7 +369,7 @@
 						this->clipEndExtraBits();
 						return *this;
 					}
-					binaryVector& operator>>= (signed long bits) {
+					binaryVectorBase& operator>>= (signed long bits) {
 						if(bits<0) {
 							return *this<<=-bits;
 						}
@@ -410,7 +410,7 @@
 					//iterator class
 					template <typename internal_> class internalsIt: public std::iterator<std::bidirectional_iterator_tag, internal_> {
 						public:
-							internalsIt(const binaryVector<internal_>& container_=nullptr,size_t where=0):offset(where),container(container_)  {}
+							internalsIt(const binaryVectorBase<internal_>& container_=nullptr,size_t where=0):offset(where),container(container_)  {}
 							internalsIt& operator++() {
 								offset++;
 								return *this;
@@ -430,7 +430,7 @@
 							}
 						private:
 							size_t offset;
-							const binaryVector<internal_>& container;
+							const binaryVectorBase<internal_>& container;
 					};
 					internalsIt<internal> begin() const {
 						internalsIt<internal> temp(*this);
@@ -448,7 +448,7 @@
 						return this->bitCount;
 					}
 					void clipEndExtraBits() {
-						auto& master=this->internals().template getParent<binaryVector<internal,addressor<internal>>>();
+						auto& master=this->internals().template getParent<binaryVectorBase<internal,addressor<internal>>>();
 						auto& baseContent=master.internals();
 						auto totalBits=8*sizeof(internal)*baseContent.size();
 						auto toClip=totalBits-master.size();
@@ -462,7 +462,7 @@
 				protected:
 					internalVector internalVec;
 			};
-			template<class internal_,class vectorType=addressor<internal_>> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
+			template<typename internal_,class parentType> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
 					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) const {
 						const signed long sizeInBits=8*sizeof(internal_);
 						//boundary is after the highest addreable Xinternal
@@ -483,7 +483,7 @@
 					}
 				public:
 					//constructor
-					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVector<internal_>*)parent_), baseOffset(offset_), viewSize(width_),virtualOffset(0) {
+					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVectorBase<internal_>*)parent_), baseOffset(offset_), viewSize(width_),virtualOffset(0) {
 					}
 					template<class type> type& getParent() {
 						return *(type*)this->parent;
@@ -599,28 +599,30 @@
 						//dummy
 						void resize(size_t size) {
 						}
-						vectorType& baseContent() {
-							return parent->internals();
+					auto& baseContent() {
+						return parent->internals();
 						}
 						signed long  width() const {
 							if(this->viewSize==-1)
 								return this->parent->size()-this->baseOffset;
 							return this->viewSize;
 						}
-						binaryVector<internal_,vectorType>* parent;
+						parentType* parent;
 				private:
 					signed long viewSize;
 					signed long baseOffset;
 					signed long virtualOffset;
 			};
+			//the binaryVector
+			template<typename internal=unsigned int> using binaryVector=binaryVectorBase<internal,addressor<internal>>;
 			//
-			template<typename internal,class vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
+			template<typename internal,class parentType=binaryVector<internal>> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,parentType>> {
 				public:
 					signed long blockStart() const {
 						return this->internalVec.firstXinternalInParent();
 					}
-					binaryVectorView(binaryVector<internal,vectorType>& parent,int offset=0,size_t width=-1) {
-						this->internals()=viewAddressor<internal>(&parent,offset,width);
+					binaryVectorView(parentType& parent,int offset=0,size_t width=-1) {
+						this->internals()=viewAddressor<internal,parentType>(&parent,offset,width);
 					}
 					binaryVectorView();
 					binaryVectorView(binaryVectorView& other) {
@@ -635,14 +637,14 @@
 				retVal.internals().applyReadOffset(offset);
 				return retVal;
 			};
-			template<typename T> binaryVectorView<T> virtualShift(binaryVector<T,addressor<T>>& input,signed long offset) {
+			template<typename T> binaryVectorView<T> virtualShift(binaryVectorBase<T,addressor<T>>& input,signed long offset) {
 				binaryVectorView<T> retVal(input,0,-1);
 				retVal.internals().applyReadOffset(offset);
 				return retVal;
 			};
 	}
 	//stream stuff;
-	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVector<internal,vectorType> thing) {
+	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVectorBase<internal,vectorType> thing) {
 		std::string str;
 		//got through the internals
 		for(signed long Xinternal=0;Xinternal!=thing.internals().size();Xinternal++)
