@@ -5,7 +5,6 @@
 #include <utility>
 	#include "doctest.h"
 	typedef unsigned  int testType;
-	/*
 	TEST_CASE_TEMPLATE_DEFINE("View tests",T,view_tests) {
 		const unsigned int viewIndex=10;
 		const unsigned int viewWidth=16;
@@ -62,7 +61,7 @@
 			for(int i=0;i!=sizeof(unsigned int);i++) {
 				vec.template loadValue(originalValue);
 				binaryVector::binaryVectorView view(vec,i,sizeof(unsigned char)*8);
-				vec&=binaryVector::virtualShift(byte, i);
+				vec&=binaryVector::virtualShift(byte, -i);
 				auto computedResult=vec.template loadIntoPrimitive<unsigned int>(0);
 				auto referenceResult=originalValue&toApply<<i;
 				std::cout<<"Referce expected"<<referenceResult<<std::endl;
@@ -71,7 +70,6 @@
 			//slide the window and do an "&" operation
 		}
 	}
-	*/
 	TEST_CASE_TEMPLATE_DEFINE("shift tests",T,shift_tests) {
 		const int shiftBy=2;
 		binaryVector::binaryVector<T> vec(8*sizeof(testType));
@@ -160,4 +158,4 @@
 	}
 	//
 	TEST_CASE_TEMPLATE_INVOKE(shift_tests,unsigned int);
-	//TEST_CASE_TEMPLATE_INVOKE(view_tests,unsigned char);
+	TEST_CASE_TEMPLATE_INVOKE(view_tests,unsigned char);

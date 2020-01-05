@@ -74,6 +74,9 @@
 			//binary Vector
 			template<typename internal=size_t, class internalVector=addressor<internal>> class binaryVector {
 				public:
+					signed long blockStart() const {
+						return 0;
+					}
 					template<typename T> void loadValue(T& value) {
 						internal temp=0;
 						unsigned long index=0;
@@ -144,8 +147,8 @@
 						//choose the lower part
 						auto minSize=(thisSize<otherSize)?thisSize:otherSize;
 						//choose the maximum base offset
-						auto thisOffset=this->internalVec.firstXinternalInParent();
-						auto otherOffset=other.internalVec.firstXinternalInParent();
+						auto thisOffset=this->blockStart();;
+						auto otherOffset=other.blockStart();
 						auto baseOffset=(thisOffset>otherOffset)?thisOffset:otherOffset;
 						return std::pair<signed long,signed long>(baseOffset,minSize);
 					}
@@ -469,7 +472,7 @@
 			};
 			template<class internal_,class vectorType=addressor<internal_>> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
 					unsigned long writeOffset;
-					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) {
+					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) const {
 						const signed long sizeInBits=8*sizeof(internal_);
 						//boundary is after the highest addreable Xinternal
 						signed long boundary=this->firstXinternalInParent()+this->size();
@@ -494,7 +497,7 @@
 					template<class type> type& getParent() {
 						return *(type*)this->parent;
 					}
-					internal_ _readType(signed long offset_) {
+					internal_ _readType(signed long offset_) const {
 						return this->readType(offset_);
 					}
 					void applyVirtualOffset(signed long offset_) {
@@ -503,7 +506,7 @@
 					void _writeType(signed long offset_,internal_ value) {
 						this->writeType(offset_,value);
 					}
-					internal_ readType(signed long offset_) {
+					internal_ readType(signed long offset_) const {
 						const signed long sizeInBits=8*sizeof(internal_);
 						signed long timesEight=offset_*sizeInBits;
 						//make sure not addressing a negatice value(and see if there is room for a reaiminder)
@@ -520,15 +523,15 @@
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
 						if(Xinternals>=0&&Xinternals+1<parent->internals().size()) {
-							firstHalf=(parent->internals().readType(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-remainder;
+							firstHalf=(parent->readBlock(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-remainder;
 						}
 						//=== second half 
 						if(Xinternals>=0&&Xinternals<parent->internals().size()) {
-							lastHalf=(parent->internals().readType(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>remainder;
+							lastHalf=(parent->readBlock(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>remainder;
 						}
 						return firstHalf|lastHalf;
 					}
-					signed long firstXinternalInParent() {
+					signed long firstXinternalInParent() const {
 						return (this->baseOffset+this->writeOffset)/(8*sizeof(internal_));
 					}
 					void writeType(signed long offset_,internal_ value) {
@@ -573,7 +576,7 @@
 								parent->clipEndExtraBits();
 							}
 						}
-						signed long size() {
+						signed long size() const {
 							const signed long typeWidth=8*sizeof(internal_);
 							//return 0 if no parent
 							if(this->parent==nullptr)
@@ -592,7 +595,7 @@
 						vectorType& baseContent() {
 							return parent->internals();
 						}
-						signed long  width() {
+						signed long  width() const {
 							if(this->viewSize==-1)
 								return this->parent->size()-this->baseOffset-this->writeOffset;
 							return this->viewSize;
@@ -605,6 +608,9 @@
 			//
 			template<typename internal,class vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {
 				public:
+					signed long blockStart() const {
+						return this->internalVec.firstXinternalInParent();
+					}
 					binaryVectorView(binaryVector<internal,vectorType>& parent,int offset=0,size_t width=-1) {
 						this->internals()=viewAddressor<internal>(&parent,offset,width);
 					}
