@@ -563,26 +563,18 @@
 					}
 				public:
 					void writeType(signed long offset_,internal_ value) {
-						const signed int timesEight=8*sizeof(internal_);
+						const signed long timesEight=8*sizeof(internal_);
 						//do nothign if no parent
 						if(parent==nullptr)
 							return;
-						//find the last Xinternals that can be addressed with th e
-						signed long maximumAdressableInternal;
 						//
 						signed long offset=virtualOffset+baseOffset+offset_*timesEight;
-						signed long Xinternals=offset/(timesEight);
-						signed long baseRemainder=(baseOffset+offset_*timesEight)&timesEight;
-						signed long remainder=offset%(timesEight);
-						//if offset is negative,change the raimnder to be relative to the previous internal
-						if(remainder<0) {
-							remainder=timesEight-remainder;
-							Xinternals--;
-						}
-						//same as above
-						if(baseRemainder<0) {
-							baseRemainder=timesEight-baseRemainder;
-						}	
+						signed long Xinternals=offset/timesEight;
+						signed long baseRemainder=(baseOffset+offset_*timesEight)%timesEight;
+						signed long remainder=offset%timesEight;
+						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
+						Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
+						remainder=(remainder<0)?timesEight+remainder:remainder;
 						//
 						auto& internals=parent->internals();
 						const internal_ ones=~(internal_)0;

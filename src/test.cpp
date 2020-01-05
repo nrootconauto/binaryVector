@@ -58,10 +58,10 @@
 			byte.loadValue(toApply);
 			for(int i=0;i!=sizeof(unsigned int);i++) {
 				vec.template loadValue(originalValue);
-				vec&=binaryVector::virtualShift(byte, i);
-				std::cout<<"shifted byte"<<binaryVector::virtualShift(byte, i)<<std::endl;
+				vec&=binaryVector::virtualShift(byte, -i);
+				std::cout<<"shifted byte"<<binaryVector::virtualShift(byte, -i)<<std::endl;
 				auto computedResult=vec.template loadIntoPrimitive<unsigned int>(0);
-				auto referenceResult=originalValue&toApply<<i;
+				auto referenceResult=originalValue&toApply>>i;
 				std::cout<<"Referce expected"<<referenceResult<<std::endl;
 				REQUIRE_MESSAGE(computedResult==referenceResult,"Bitwie and failed");
 			}
