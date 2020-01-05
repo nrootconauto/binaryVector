@@ -51,7 +51,7 @@
 		SUBCASE("bitwise And") {
 			unsigned int value=0xfe2324;
 			unsigned int originalValue=value;
-			unsigned char toApply=0x12;
+			unsigned int  toApply=0xe12;
 			binaryVector::binaryVector<T> vec(sizeof(unsigned int)*8);
 			vec.template loadValue(originalValue);
 			binaryVector::binaryVector<T> byte(sizeof(unsigned int)*8);

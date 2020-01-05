@@ -115,7 +115,7 @@
 						temp.clipEndExtraBits();
 						return temp;
 					}
-					template<class T> binaryVector operator&(const binaryVector<internal,T> other) const {
+					template<class T> binaryVector operator&(const binaryVector<internal,T>& other) const {
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						//copy over and apply & operator
 						auto [start,end]=this->getAffectedRange(other);
@@ -123,7 +123,7 @@
 							temp.internals()._writeType(i,this->internalVec._readType(i)&other.internalVec._readType(i));
 						return temp;
 					}
-					template<class T> binaryVector operator|(const binaryVector<internal,T> other) const {
+					template<class T> binaryVector operator|(const binaryVector<internal,T>& other) const {
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
@@ -131,7 +131,7 @@
 							temp.internals()._writeType(i,this->internalVec._readType(i)|other.internalVec._readType(i));
 						return temp;
 					}
-					template<class T> binaryVector operator^ (const binaryVector<internal,T> other) const {
+					template<class T> binaryVector operator^ (const binaryVector<internal,T>& other) const {
 						auto temp=binaryVector<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
@@ -141,7 +141,7 @@
 					}
 				private:
 					//get affected range
-					template<class otherAddressor> std::pair<signed long,signed long> getAffectedRange(const binaryVector<internal,otherAddressor> other) const {
+					template<class otherAddressor> std::pair<signed long,signed long> getAffectedRange(const binaryVector<internal,otherAddressor>& other) const {
 						//choose the maximum base offset
 						auto thisOffset=this->blockStart();
 						auto otherOffset=other.blockStart();
@@ -158,7 +158,7 @@
 				public:
 					//or
 					//binary equality operators
-					template<class vector> binaryVector& operator |=(const binaryVector<internal,vector> other) {
+					template<class vector> binaryVector& operator |=(const binaryVector<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//go though and or
 						for(auto i=baseOffset;i!=minSize;i++) {
@@ -179,7 +179,7 @@
 						return *this;
 					}
 					//
-					template<class vector> binaryVector& operator &=(const binaryVector<internal,vector> other) {
+					template<class vector> binaryVector& operator &=(const binaryVector<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//erase the zeros before baseOffset
 						for(auto i=baseOffset-1;i>=0;i--)
@@ -221,7 +221,7 @@
 						this->clipEndExtraBits();
 					}
 					//internal is to be equal or lesser in size to otherInternal
-					template<typename otherInternal> void copy(const binaryVector<otherInternal> other,int offset=0) {
+					template<typename otherInternal> void copy(const binaryVector<otherInternal>& other,int offset=0) {
 						this->resize(offset+other.size());
 						if(sizeof(otherInternal)==sizeof(internal)) {
 							for(int i=0;i!=other.blockSize();i++)
@@ -439,10 +439,10 @@
 							internal_ operator*() const {
 								return this->container.readBlock(this->offset);
 							}
-							bool operator==(const internalsIt other) const {
+							bool operator==(const internalsIt& other) const {
 								return (other.offset==offset)&&(&other.container==&container);
 							}
-							bool operator!=(const internalsIt other) const {
+							bool operator!=(const internalsIt& other) const {
 								return !((*this)==other);
 							}
 						private:
@@ -525,7 +525,7 @@
 						signed long virtualRemainder=offset%sizeInBits;
 						signed long Xinternals=(timesEight+offset)/(sizeInBits);
 						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
-						Xinternals-=(virtualRemainder<0)?1:0;
+						Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
 						virtualRemainder=(virtualRemainder<0)?sizeInBits+virtualRemainder:virtualRemainder;
 						
 						//if baseOffset goes past negative,assume 0 IF there is a reminder 
@@ -563,41 +563,45 @@
 					}
 				public:
 					void writeType(signed long offset_,internal_ value) {
+						const signed int timesEight=8*sizeof(internal_);
 						//do nothign if no parent
 						if(parent==nullptr)
 							return;
 						//find the last Xinternals that can be addressed with th e
 						signed long maximumAdressableInternal;
-						signed long lastBit=this->baseOffset+this->width();
 						//
-						signed long offset=baseOffset+offset_*sizeof(internal_)*8;
-						signed long Xinternals=offset/(8*sizeof(internal_));
-						signed long remainder=offset%(8*sizeof(internal_));
+						signed long offset=virtualOffset+baseOffset+offset_*timesEight;
+						signed long Xinternals=offset/(timesEight);
+						signed long baseRemainder=(baseOffset+offset_*timesEight)&timesEight;
+						signed long remainder=offset%(timesEight);
+						//if offset is negative,change the raimnder to be relative to the previous internal
+						if(remainder<0) {
+							remainder=timesEight-remainder;
+							Xinternals--;
+						}
+						//same as above
+						if(baseRemainder<0) {
+							baseRemainder=timesEight-baseRemainder;
+						}	
+						//
 						auto& internals=parent->internals();
 						const internal_ ones=~(internal_)0;
 						//remainder of the width in bits
-						signed long widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
-						//boundary is after maximum addresable boundary
-						signed long boundary=this->_internal_firstXinternalInParent();
-						//assume boundary is at end of parent if is -1
-						if(this->size()==-1)
-							boundary=internals.size();
-						else
-							boundary+=this->size();
+						signed long widthRemainder=(this->width()+this->baseOffset)%timesEight;
 						//function to apply "End" mask
 						//
 							if(Xinternals>=0&&Xinternals<internals.size()) {
-								internal_ mask=endMask(Xinternals,remainder,widthRemainder);
+								internal_ mask=endMask(Xinternals,baseRemainder,widthRemainder);
 								//apply mask to old vvalue
 								internal_ leftOver=internals.readType(Xinternals);
 								leftOver&=~(mask&ones<<remainder);
 								internals.writeType(Xinternals,((value<<remainder)&mask)|leftOver);
 							}
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
-								internal_ mask=endMask(Xinternals+1, remainder, widthRemainder);
+								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
-								leftOver&=~(mask&ones>>sizeof(internal_)*8-remainder); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
-								internals.writeType(Xinternals+1, ((value>>sizeof(internal_)*8-remainder)&mask|leftOver));
+								leftOver&=~(mask&ones>>timesEight-remainder); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
+								internals.writeType(Xinternals+1, ((value>>timesEight-remainder)&mask|leftOver));
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {
