@@ -142,15 +142,18 @@
 				private:
 					//get affected range
 					template<class otherAddressor> std::pair<signed long,signed long> getAffectedRange(const binaryVector<internal,otherAddressor> other) const {
-						auto thisSize=this->blockSize();
-						auto otherSize=other.blockSize();
-						//choose the lower part
-						auto minSize=(thisSize<otherSize)?thisSize:otherSize;
 						//choose the maximum base offset
-						auto thisOffset=this->blockStart();;
+						auto thisOffset=this->blockStart();
 						auto otherOffset=other.blockStart();
+						//
+						auto thisEnd=thisOffset+this->blockSize();
+						auto otherEnd=otherOffset+other.blockSize();
+						//choose the lower part
+						auto minEnd=(thisEnd<otherEnd)?thisEnd:otherEnd;
+						//choose the maximum base offset
 						auto baseOffset=(thisOffset>otherOffset)?thisOffset:otherOffset;
-						return std::pair<signed long,signed long>(baseOffset,minSize);
+						//if the start is past the end,there is no overlap so return 0,0 to signfic a overlap of 0 elements,(no overlap) 
+						return std::pair<signed long,signed long>(baseOffset,minEnd);
 					}
 				public:
 					//or
@@ -333,6 +336,9 @@
 					}
 					//
 					binaryVector& operator <<=(signed long bits) {
+						if(bits<0) {
+							return *this>>=-bits;
+						}
 						internal carryRegister;
 						internal carryOver;
 						signed long Xinternals=bits/(sizeof(internal)*8);
@@ -381,6 +387,9 @@
 						return *this;
 					}
 					binaryVector& operator>>= (signed long bits) {
+						if(bits<0) {
+							return *this<<=-bits;
+						}
 						//how many internals the shift spans
 						signed long Xinternals=bits/(sizeof(internal)*8);
 						signed long remainder=bits%(sizeof(internal)*8);
@@ -471,11 +480,10 @@
 					internalVector internalVec;
 			};
 			template<class internal_,class vectorType=addressor<internal_>> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
-					unsigned long writeOffset;
 					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) const {
 						const signed long sizeInBits=8*sizeof(internal_);
 						//boundary is after the highest addreable Xinternal
-						signed long boundary=this->firstXinternalInParent()+this->size();
+						signed long boundary=this->_internal_firstXinternalInParent()+this->size();
 						//trims the view to not see past the mask
 						const internal_ ones=~0;
 						internal_ mask;
@@ -492,7 +500,7 @@
 					}
 				public:
 					//constructor
-					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVector<internal_>*)parent_), baseOffset(offset_), viewSize(width_),writeOffset(0) {
+					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVector<internal_>*)parent_), baseOffset(offset_), viewSize(width_),virtualOffset(0) {
 					}
 					template<class type> type& getParent() {
 						return *(type*)this->parent;
@@ -501,7 +509,7 @@
 						return this->readType(offset_);
 					}
 					void applyVirtualOffset(signed long offset_) {
-						this->writeOffset+=offset_;
+						this->virtualOffset-=offset_;
 					}
 					void _writeType(signed long offset_,internal_ value) {
 						this->writeType(offset_,value);
@@ -509,11 +517,17 @@
 					internal_ readType(signed long offset_) const {
 						const signed long sizeInBits=8*sizeof(internal_);
 						signed long timesEight=offset_*sizeInBits;
+						signed long offset=virtualOffset+baseOffset;
 						//make sure not addressing a negatice value(and see if there is room for a reaiminder)
 						if(baseOffset>2*sizeInBits+timesEight)
 							return 0;
 						signed long remainder=(baseOffset)%sizeInBits;
-						signed long Xinternals=(timesEight+baseOffset+this->writeOffset)/(8*sizeof(internal_));
+						signed long virtualRemainder=offset%sizeInBits;
+						signed long Xinternals=(timesEight+offset)/(sizeInBits);
+						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
+						Xinternals-=(virtualRemainder<0)?1:0;
+						virtualRemainder=(virtualRemainder<0)?sizeInBits+virtualRemainder:virtualRemainder;
+						
 						//if baseOffset goes past negative,assume 0 IF there is a reminder 
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
@@ -522,18 +536,32 @@
 						//===function to make end mask
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
-						if(Xinternals>=0&&Xinternals+1<parent->internals().size()) {
-							firstHalf=(parent->readBlock(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-remainder;
+						if(Xinternals+1>=0&&Xinternals+1<parent->internals().size()) {
+							firstHalf=(parent->readBlock(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-virtualRemainder;
 						}
 						//=== second half 
 						if(Xinternals>=0&&Xinternals<parent->internals().size()) {
-							lastHalf=(parent->readBlock(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>remainder;
+							lastHalf=(parent->readBlock(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>virtualRemainder;
 						}
 						return firstHalf|lastHalf;
 					}
 					signed long firstXinternalInParent() const {
-						return (this->baseOffset+this->writeOffset)/(8*sizeof(internal_));
+						signed long offset=baseOffset+virtualOffset;
+						signed long wholeInternal=(offset)/(8*sizeof(internal_));
+						//if negative be sure to address the internal containing the remainder
+						if(offset<0)
+							return wholeInternal-((offset&(8*sizeof(internal_)))?1:0);
+						return wholeInternal;
 					}
+					protected:
+					signed long _internal_firstXinternalInParent() const {
+						signed long wholeInternal=(this->baseOffset)/(8*sizeof(internal_));
+						//if negative be sure to address the internal containing the remainder
+						if(this->baseOffset<0)
+							return wholeInternal-((this->baseOffset&(8*sizeof(internal_)))?1:0);
+						return wholeInternal;
+					}
+				public:
 					void writeType(signed long offset_,internal_ value) {
 						//do nothign if no parent
 						if(parent==nullptr)
@@ -542,7 +570,7 @@
 						signed long maximumAdressableInternal;
 						signed long lastBit=this->baseOffset+this->width();
 						//
-						signed long offset=writeOffset+baseOffset+offset_*sizeof(internal_)*8;
+						signed long offset=baseOffset+offset_*sizeof(internal_)*8;
 						signed long Xinternals=offset/(8*sizeof(internal_));
 						signed long remainder=offset%(8*sizeof(internal_));
 						auto& internals=parent->internals();
@@ -550,7 +578,7 @@
 						//remainder of the width in bits
 						signed long widthRemainder=(this->width()+this->baseOffset)%(8*sizeof(internal_));
 						//boundary is after maximum addresable boundary
-						signed long boundary=this->firstXinternalInParent();
+						signed long boundary=this->_internal_firstXinternalInParent();
 						//assume boundary is at end of parent if is -1
 						if(this->size()==-1)
 							boundary=internals.size();
@@ -597,13 +625,14 @@
 						}
 						signed long  width() const {
 							if(this->viewSize==-1)
-								return this->parent->size()-this->baseOffset-this->writeOffset;
+								return this->parent->size()-this->baseOffset;
 							return this->viewSize;
 						}
 						binaryVector<internal_,vectorType>* parent;
 				private:
 					signed long viewSize;
 					signed long baseOffset;
+					signed long virtualOffset;
 			};
 			//
 			template<typename internal,class vectorType=addressor<internal>> class binaryVectorView:public binaryVector<internal,viewAddressor<internal>> {

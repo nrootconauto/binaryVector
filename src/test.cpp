@@ -41,8 +41,6 @@
 			for(int i=0;i<viewWidth;i+=shiftAmount) {
 				auto result=view.template loadIntoPrimitive<unsigned int>(0);
 				//check the value of the window
-				std::cout<<"vec :"<<vec<<std::endl;
-				std::cout<<"view:"<<view<<std::endl;
 				REQUIRE_MESSAGE(((value&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
 				//check value outside of the "window"
 				REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
@@ -60,8 +58,8 @@
 			byte.loadValue(toApply);
 			for(int i=0;i!=sizeof(unsigned int);i++) {
 				vec.template loadValue(originalValue);
-				binaryVector::binaryVectorView view(vec,i,sizeof(unsigned char)*8);
-				vec&=binaryVector::virtualShift(byte, -i);
+				vec&=binaryVector::virtualShift(byte, i);
+				std::cout<<"shifted byte"<<binaryVector::virtualShift(byte, i)<<std::endl;
 				auto computedResult=vec.template loadIntoPrimitive<unsigned int>(0);
 				auto referenceResult=originalValue&toApply<<i;
 				std::cout<<"Referce expected"<<referenceResult<<std::endl;
@@ -157,5 +155,5 @@
 		MESSAGE("Binary XOR works");
 	}
 	//
-	TEST_CASE_TEMPLATE_INVOKE(shift_tests,unsigned int);
+	//	TEST_CASE_TEMPLATE_INVOKE(shift_tests,unsigned int);
 	TEST_CASE_TEMPLATE_INVOKE(view_tests,unsigned char);
