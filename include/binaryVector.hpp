@@ -7,24 +7,7 @@
 	namespace binaryVector {
 			//nibble table
 			//nibble lookup table
-			const std::vector<const char*> nibbleTable {
-				"0000",
-				"0001",
-				"0010",
-				"0011",
-				"0100",
-				"0101",
-				"0110",
-				"0111",
-				"1000",
-				"1001",
-				"1010",
-				"1011",
-				"1100",
-				"1101",
-				"1110",
-				"1111"
-			};
+			extern const std::vector<const char*> nibbleTable;;
 			//addressor
 			template<typename type> class addressor {
 					public:
@@ -508,7 +491,7 @@
 					internal_ _readType(signed long offset_) const {
 						return this->readType(offset_);
 					}
-					void applyVirtualOffset(signed long offset_) {
+					void applyReadOffset(signed long offset_) {
 						this->virtualOffset-=offset_;
 					}
 					void _writeType(signed long offset_,internal_ value) {
@@ -649,12 +632,12 @@
 			};
 			template<typename T,class base> binaryVectorView<T,base> virtualShift(binaryVectorView<T,base>& input,signed long offset) {
 				binaryVectorView<T,base> retVal=input;
-				retVal.internals().applyVirtualOffset(offset);
+				retVal.internals().applyReadOffset(offset);
 				return retVal;
 			};
 			template<typename T> binaryVectorView<T> virtualShift(binaryVector<T,addressor<T>>& input,signed long offset) {
 				binaryVectorView<T> retVal(input,0,-1);
-				retVal.internals().applyVirtualOffset(offset);
+				retVal.internals().applyReadOffset(offset);
 				return retVal;
 			};
 	}
