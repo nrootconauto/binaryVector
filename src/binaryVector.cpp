@@ -1,4 +1,4 @@
-#include <binaryVector.hpp>
+// // #include <binaryVector.hpp>
 	namespace binaryVector {
 	const std::vector<const char*> nibbleTable {
 				"0000",
