@@ -1,6 +1,6 @@
 #include <iostream>
 #include "../include/binaryVector.hpp"
-	#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <vector>
 #include <utility>
 	#include "doctest.h"
@@ -37,6 +37,7 @@
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
 			binaryVector::binaryVectorView<T> view(vec,viewIndex,viewWidth);
+			
 			vec.loadValue(value);
 			for(int i=0;i<viewWidth;i+=shiftAmount) {
 				auto result=view.template loadIntoPrimitive<unsigned int>(0);

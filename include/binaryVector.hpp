@@ -95,7 +95,7 @@
 						for(int i=0;i!=this->blockSize();i++)
 							temp.internals()._writeType(i,~this->internalVec._readType(i));
 						//
-						temp.clipEndExtraBits();
+						temp.template clipEndExtraBits<binaryVectorBase>();
 						return temp;
 					}
 					template<class T> binaryVectorBase operator&(const binaryVectorBase<internal,T>& other) const {
@@ -147,7 +147,7 @@
 						for(auto i=baseOffset;i!=minSize;i++) {
 							this->internalVec._writeType(i,this->internalVec._readType(i)|other->internals()._readType(i));
 						}
-						this->clipEndExtraBits();
+						this->clipEndExtraBits<binaryVectorBase>();
 						return *this;
 					}
 					//xor !!!
@@ -158,7 +158,7 @@
 							this->internalVec._writeType(i,this->internalVec._readType(i)^other->internals()._readType(i));
 						}
 						//
-						this->clipEndExtraBits();
+						this->clipEndExtraBits<binaryVectorBase>();
 						return *this;
 					}
 					//
@@ -175,7 +175,7 @@
 						//zeroify this past the minSize
 						for(auto i=minSize+baseOffset;i<this->internalVec.size();i++)
 							this->internalVec._writeType(i,0);
-						this->clipEndExtraBits();
+						this->clipEndExtraBits<binaryVectorBase>();
 						return *this;
 					}
 					//access operator
@@ -201,7 +201,7 @@
 						}
 						this->bitCount=bits;
 						//put 0's in the raiminding bits
-						this->clipEndExtraBits();
+						this->clipEndExtraBits<binaryVectorBase>();
 					}
 					//internal is to be equal or lesser in size to otherInternal
 					template<typename otherInternal> void copy(const binaryVectorBase<otherInternal>& other,int offset=0) {
@@ -295,7 +295,7 @@
 							if(leftOverBitsSmall!=0)
 								mergeIntoThis(toChug);
 						}
-						this->clipEndExtraBits();
+						this->clipEndExtraBits<binaryVectorBase>();
 					}
 					//constructor
 					binaryVectorBase(size_t sizeInBits):internalVec(this) {
@@ -366,7 +366,7 @@
 							for(signed long I=0;I<Xinternals;I++)
 								internalVec._writeType(I,0);
 						}
-						this->clipEndExtraBits();
+						this->clipEndExtraBits<binaryVectorBase>();
 						return *this;
 					}
 					binaryVectorBase& operator>>= (signed long bits) {
@@ -404,7 +404,7 @@
 							internalVec.writeType(internalVec.size()-1,0);
 						}
 						//clip
-						this->clipEndExtraBits();
+						this->clipEndExtraBits<binaryVectorBase>();
 						return *this;
 					}
 					//iterator class
@@ -447,8 +447,8 @@
 					signed long size() const {
 						return this->bitCount;
 					}
-					void clipEndExtraBits() {
-						auto& master=this->internals().template getParent<binaryVectorBase<internal,addressor<internal>>>();
+					template<class T=binaryVectorBase> void clipEndExtraBits() {
+						auto& master=this->internals().template getParent<T>();
 						auto& baseContent=master.internals();
 						auto totalBits=8*sizeof(internal)*baseContent.size();
 						auto toClip=totalBits-master.size();
@@ -462,6 +462,7 @@
 				protected:
 					internalVector internalVec;
 			};
+			template<class T,class internal> binaryVectorBase<internal> getMasterAddressor(const T item);
 			template<typename internal_,class parentType> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
 					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) const {
 						const signed long sizeInBits=8*sizeof(internal_);
@@ -485,7 +486,7 @@
 					//constructor
 					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVectorBase<internal_>*)parent_), baseOffset(offset_), viewSize(width_),virtualOffset(0) {
 					}
-					template<class type> type& getParent() {
+					template<class type> type& getParent() const {
 						return *(type*)this->parent;
 					}
 					internal_ _readType(signed long offset_) const {
@@ -580,7 +581,7 @@
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {
-								parent->clipEndExtraBits();
+								parent->template clipEndExtraBits<parentType>();
 							}
 						}
 						signed long size() const {
@@ -615,7 +616,7 @@
 			};
 			//the binaryVector
 			template<typename internal=unsigned int> using binaryVector=binaryVectorBase<internal,addressor<internal>>;
-			//
+			// 
 			template<typename internal,class parentType=binaryVector<internal>> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,parentType>> {
 				public:
 					signed long blockStart() const {
