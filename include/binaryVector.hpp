@@ -60,7 +60,7 @@
 					signed long blockStart() const {
 						return 0;
 					}
-					template<typename T> void loadValue(T& value) {
+					template<typename T> void loadValue(const T& value) {
 						internal temp=0;
 						unsigned long index=0;
 						this->resize(sizeof(value)*8);
