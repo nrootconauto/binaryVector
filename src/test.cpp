@@ -20,12 +20,13 @@
 			//view.writeBlock(1,0b10000001);
 			for(int i=0;i<viewWidth;i+=shiftAmount) {
 				auto result=view.template loadIntoPrimitive<unsigned int>(0);
+				auto mastervalue=vec.template loadIntoPrimitive<unsigned int>(0);
 				//check the value of the window
 				std::cout<<"vec :"<<vec<<std::endl;
 				std::cout<<"view:"<<view<<std::endl;
-				REQUIRE_MESSAGE(((value&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
+				REQUIRE_MESSAGE(((mastervalue&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
 				//check value outside of the "window"
-				REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
+				REQUIRE_MESSAGE(((originalValue&~viewMask))==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
 				REQUIRE_MESSAGE((result)==((value>>viewIndex)&(0xffff)),"View doesnt match computed");
 				//
 				//value<<=shiftAmount;
@@ -33,6 +34,7 @@
 				//std::cout<<view<<std::endl;
 				//view.writeBlock(0,0b11000000);
 				view<<=shiftAmount;
+				value=(value&~viewMask)|((value&viewMask)<<shiftAmount);
 			}
 		}
 		SUBCASE("right view shifting") {
