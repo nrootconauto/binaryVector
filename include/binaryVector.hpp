@@ -35,6 +35,9 @@
 					signed long size() const {
 						return container.size();
 					}
+					signed long width() const {
+						return this->container.size()*sizeof(type)*8;
+					}
 					void resize(size_t size) {
 						this->container.resize(size);
 					}
@@ -604,7 +607,7 @@
 						}
 						signed long  width() const {
 							if(this->viewSize==-1)
-								return this->parent->size()-this->baseOffset;
+								return this->parent->internals().width()-this->baseOffset;
 							return this->viewSize;
 						}
 						parentType* parent;
