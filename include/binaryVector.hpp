@@ -571,6 +571,7 @@
 								leftOver&=(~mask)|~(ones<<(baseRemainder));
 								internals.writeType(Xinternals,((value<<baseRemainder)&mask)|leftOver);
 							}
+							if(baseRemainder+this->width()>timesEight)
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
