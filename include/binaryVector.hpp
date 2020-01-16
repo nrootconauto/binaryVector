@@ -631,11 +631,6 @@
 					binaryVectorView(internal* items,size_t count=-1) = delete;
 					//template<class T,class base> binaryVectorView<T,base> friend virtualShift(binaryVectorView<T,base>& input,signed long offset);
 			};
-			template<typename T,class base> binaryVectorView<T,base> virtualShift(binaryVectorView<T,base>& input,signed long offset) {
-				binaryVectorView<T,base> retVal=input;
-				retVal.internals().applyReadOffset(offset);
-				return retVal;
-			};
 			template<typename T> binaryVectorView<T> virtualShift(binaryVectorBase<T,addressor<T>>& input,signed long offset) {
 				binaryVectorView<T> retVal(input,0,-1);
 				retVal.internals().applyReadOffset(offset);

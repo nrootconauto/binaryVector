@@ -32,11 +32,11 @@
 				//std::cout<<view<<std::endl;
 				//view.writeBlock(0,0b11000000);
 				std::cout<<view<<std::endl;
-				view<<=1;
+				view<<=shiftAmount;
 			}
 		}
 		SUBCASE("right view shifting") {
-			const int shiftAmount=1;
+			const int shiftAmount=2;
 			unsigned int value=0x1fefe860;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
