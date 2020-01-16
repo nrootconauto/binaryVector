@@ -90,7 +90,7 @@ This function applys an offset to the value of the window when reading in a  `bi
 
 ## WARNINGS
 
-- **MAKE SURE THAT `internalType` IS `unsigned` TO AVOID UNDESIRABLE ARITHMETIC SHIFTING**,as opposed to logical shifting
+- **MAKE SURE THAT `internalType` IS `unsigned` TO AVOID UNDESIRABLE ARITHMETIC SHIFTING,as opposed to logical shifting**
 - **DONT NOT USE `unsigned long` AS THE INTENRAL OF A `binaryVector` AS ARITHMETIC SHIFTING WILL OCCUR IF THIS HAPPENS**
 
 ## Licensing
