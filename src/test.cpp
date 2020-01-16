@@ -15,7 +15,7 @@
 			unsigned int value=0xffffffff;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
-			binaryVector::binaryVectorView<T> view(vec,viewIndex,9);
+			binaryVector::binaryVectorView<T> view(vec,viewIndex,viewWidth);
 			vec.loadValue(value);
 			//view.writeBlock(1,0b10000001);
 			for(int i=0;i<viewWidth;i+=shiftAmount) {
@@ -23,15 +23,15 @@
 				//check the value of the window
 				std::cout<<"vec :"<<vec<<std::endl;
 				std::cout<<"view:"<<view<<std::endl;
-				//REQUIRE_MESSAGE(((value&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
+				REQUIRE_MESSAGE(((value&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
 				//check value outside of the "window"
-				//REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
+				REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
+				REQUIRE_MESSAGE((result)==((value>>viewIndex)&(0xffff)),"View doesnt match computed");
 				//
 				//value<<=shiftAmount;
 				//view.writeBlock(1,0);
 				//std::cout<<view<<std::endl;
 				//view.writeBlock(0,0b11000000);
-				std::cout<<view<<std::endl;
 				view<<=shiftAmount;
 			}
 		}
