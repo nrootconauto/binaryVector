@@ -568,14 +568,14 @@
 								internal_ mask=endMask(Xinternals,baseRemainder,widthRemainder);
 								//apply mask to old vvalue
 								internal_ leftOver=internals.readType(Xinternals);
-								leftOver&=~(mask);
+								leftOver&=(~mask)|~(ones<<(baseRemainder));
 								internals.writeType(Xinternals,((value<<baseRemainder)&mask)|leftOver);
 							}
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
-								leftOver&=~mask; //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
-								internals.writeType(Xinternals+1, ((value>>(timesEight-baseRemainder)&mask)|leftOver));
+								leftOver&=mask; //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
+								internals.writeType(Xinternals+1, ((value>>(timesEight-widthRemainder)&mask)|leftOver));
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {

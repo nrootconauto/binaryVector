@@ -11,7 +11,7 @@
 		const unsigned int size=sizeof(unsigned int)*8;
 		const unsigned int viewMask=0xffff<<viewIndex;
 		SUBCASE("view left shift") {
-			const int shiftAmount=1;
+			const int shiftAmount=2;
 			unsigned int value=0xffffffff;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
@@ -28,9 +28,11 @@
 				REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
 				//
 				//value<<=shiftAmount;
-				//view.writeBlock(0, 0b10100011);
-				auto value=view.readBlock(0)<<1;
-				view.writeBlock(0,value);
+				view.writeBlock(1,0);
+				std::cout<<view<<std::endl;
+				view.writeBlock(0,0b11000000);
+				std::cout<<view<<std::endl;
+				//view<<=2;
 			}
 		}
 		SUBCASE("right view shifting") {
