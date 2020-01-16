@@ -28,11 +28,11 @@
 				//REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
 				//
 				//value<<=shiftAmount;
-				view.writeBlock(1,0);
+				//view.writeBlock(1,0);
+				//std::cout<<view<<std::endl;
+				//view.writeBlock(0,0b11000000);
 				std::cout<<view<<std::endl;
-				view.writeBlock(0,0b11000000);
-				std::cout<<view<<std::endl;
-				//view<<=2;
+				view<<=1;
 			}
 		}
 		SUBCASE("right view shifting") {
