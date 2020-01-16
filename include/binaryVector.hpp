@@ -471,7 +471,7 @@
 						const internal_ ones=~0;
 						internal_ mask;
 						if(Xinternal+1==boundary)
-							mask=ones>>(widthRemainder?sizeInBits-widthRemainder:0); //make sure if remainder doesnt pass into next byte if there is no reminder;
+							mask=ones>>(widthRemainder?this->width()-widthRemainder:0); //make sure if remainder doesnt pass into next byte if there is no reminder;
 						else if(Xinternal>=boundary)
 							return 0;
 						else
