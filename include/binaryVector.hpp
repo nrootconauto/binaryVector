@@ -1,4 +1,3 @@
-#include "../include/binaryGraph.hpp" 
 #include <vector>
 #include <iostream>
 #include <iterator>
@@ -554,7 +553,7 @@
 						//
 						signed long offset=baseOffset+offset_*timesEight;
 						signed long Xinternals=offset/timesEight;
-						signed long baseRemainder=(baseOffset+offset_*timesEight)%timesEight;
+						signed long baseRemainder=(baseOffset)%timesEight;
 						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
 						//Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
 						//remainder=(remainder<0)?timesEight+remainder:remainder;
@@ -570,13 +569,13 @@
 								//apply mask to old vvalue
 								internal_ leftOver=internals.readType(Xinternals);
 								leftOver&=~(mask);
-								internals.writeType(Xinternals,((value<<widthRemainder)&mask)|leftOver);
+								internals.writeType(Xinternals,((value<<baseRemainder)&mask)|leftOver);
 							}
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
 								leftOver&=~mask; //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
-								internals.writeType(Xinternals+1, ((value>>widthRemainder)&mask|leftOver));
+								internals.writeType(Xinternals+1, ((value>>(timesEight-baseRemainder)&mask)|leftOver));
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {

@@ -27,9 +27,10 @@
 				//check value outside of the "window"
 				REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
 				//
-				value<<=shiftAmount;
+				//value<<=shiftAmount;
 				//view.writeBlock(0, 0b10100011);
-				view<<=shiftAmount;
+				auto value=view.readBlock(0)<<1;
+				view.writeBlock(0,value);
 			}
 		}
 		SUBCASE("right view shifting") {
