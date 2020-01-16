@@ -574,7 +574,7 @@
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
-								leftOver&=mask; //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
+								leftOver&=~mask; //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
 								internals.writeType(Xinternals+1, ((value>>(timesEight-widthRemainder)&mask)|leftOver));
 							}
 							//clip if writing on the last Internal
