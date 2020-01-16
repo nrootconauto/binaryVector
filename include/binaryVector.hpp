@@ -342,7 +342,7 @@
 							else
 								lastTowardsEnd=0;
 							//OPTIMIZATION:boundedCheck(for binaryVectorBaseViews) will be used on "last" element to ensure doesnt write past last bit
-							auto perXinternal=[&](signed long i,void (internalVector::*fp)(signed long,internal))->void {
+							auto perXinternal=[&](signed long i)->void {
 								//assume 0 if carring over before first bit(Xinternals-1 must not (when subtracted) be before 0)
 								if(i-Xinternals-1<0)
 									carryOver=0;
@@ -351,20 +351,20 @@
 								//put in register
 								carryRegister=(internalVec._readType(i-Xinternals)<<remainder)|carryOver;
 								//move left X internals
-								(internalVec.*fp)(i,carryRegister);
+								this->writeBlock(i,carryRegister);
 							};
 							//wipe those past the affected
 							for(signed long I=internalVec.size()-1;I>lastTowardsEnd+1;I--)
-								internalVec._writeType(I,0);
+								this->writeBlock(I, 0);//internalVec._writeType(I,0);
 							//do the last element with a boundarycheck
 							if(internalVec.size()-1>=lastTowardsEnd)
-								perXinternal(lastTowardsEnd,&internalVector::writeType);
+								perXinternal(lastTowardsEnd);
 							//the actual loop with no boundary checks
 							for(signed long I=lastTowardsEnd-1;I>=lastTowardsZero;I--)
-								perXinternal(I,&internalVector::_writeType);
+								perXinternal(I);
 							//fill rest with 0s
 							for(signed long I=0;I<Xinternals;I++)
-								internalVec._writeType(I,0);
+								this->writeBlock(I, 0); //; internalVec._writeType(I,0);
 						}
 						this->clipEndExtraBits<binaryVectorBase>();
 						return *this;
@@ -484,7 +484,7 @@
 					}
 				public:
 					//constructor
-					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent((binaryVectorBase<internal_>*)parent_), baseOffset(offset_), viewSize(width_),virtualOffset(0) {
+					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent(static_cast<parentType*>(parent_)), baseOffset(offset_), viewSize(width_),virtualOffset(0) {
 					}
 					template<class type> type& getParent() const {
 						return *(type*)this->parent;
@@ -555,7 +555,6 @@
 						signed long offset=baseOffset+offset_*timesEight;
 						signed long Xinternals=offset/timesEight;
 						signed long baseRemainder=(baseOffset+offset_*timesEight)%timesEight;
-						signed long remainder=baseOffset;
 						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
 						//Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
 						//remainder=(remainder<0)?timesEight+remainder:remainder;
@@ -570,14 +569,14 @@
 								internal_ mask=endMask(Xinternals,baseRemainder,widthRemainder);
 								//apply mask to old vvalue
 								internal_ leftOver=internals.readType(Xinternals);
-								leftOver&=~(mask&ones<<remainder);
-								internals.writeType(Xinternals,((value<<remainder)&mask)|leftOver);
+								leftOver&=~(mask);
+								internals.writeType(Xinternals,((value<<widthRemainder)&mask)|leftOver);
 							}
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
-								leftOver&=~(mask&ones>>timesEight-remainder); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
-								internals.writeType(Xinternals+1, ((value>>timesEight-remainder)&mask|leftOver));
+								leftOver&=~mask; //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
+								internals.writeType(Xinternals+1, ((value>>widthRemainder)&mask|leftOver));
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {

@@ -12,10 +12,10 @@
 		const unsigned int viewMask=0xffff<<viewIndex;
 		SUBCASE("view left shift") {
 			const int shiftAmount=1;
-			unsigned int value=0x1fefe860;
+			unsigned int value=0xffffffff;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
-			binaryVector::binaryVectorView<T> view(vec,viewIndex,viewWidth);
+			binaryVector::binaryVectorView<T> view(vec,viewIndex,9);
 			vec.loadValue(value);
 			//view.writeBlock(1,0b10000001);
 			for(int i=0;i<viewWidth;i+=shiftAmount) {
@@ -28,6 +28,7 @@
 				REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
 				//
 				value<<=shiftAmount;
+				//view.writeBlock(0, 0b10100011);
 				view<<=shiftAmount;
 			}
 		}
@@ -36,8 +37,8 @@
 			unsigned int value=0x1fefe860;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
-			binaryVector::binaryVectorView<T> view(vec,viewIndex,viewWidth);
-			
+			binaryVector::binaryVectorView<T> view1(vec,viewIndex,viewWidth);
+			binaryVector::binaryVectorView<T,decltype(view1)> view(view1,0);
 			vec.loadValue(value);
 			for(int i=0;i<viewWidth;i+=shiftAmount) {
 				auto result=view.template loadIntoPrimitive<unsigned int>(0);
@@ -45,8 +46,10 @@
 				REQUIRE_MESSAGE(((value&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
 				//check value outside of the "window"
 				REQUIRE_MESSAGE((originalValue&~viewMask)==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
+				std::cout<<"Rvec:"<<vec<<std::endl;
+				std::cout<<"Rview"<<view1<<std::endl;
 				value>>=shiftAmount;
-				view>>=shiftAmount;
+				view1>>=shiftAmount;
 			}
 		}
 		SUBCASE("bitwise And") {
