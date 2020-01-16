@@ -619,14 +619,18 @@
 			//the binaryVector
 			template<typename internal=unsigned int> using binaryVector=binaryVectorBase<internal,addressor<internal>>;
 			// 
-			template<typename internal,class parentType=binaryVector<internal>> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,parentType>> {
+			template<typename internal> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,binaryVector<internal>>> {
 				public:
+					typedef binaryVector<internal> parentType;
 					signed long blockStart() const {
 						return this->internalVec.firstXinternalInParent();
 					}
 					binaryVectorView(parentType& parent,int offset=0,size_t width=-1) {
 						this->internals()=viewAddressor<internal,parentType>(&parent,offset,width);
 					}
+					//binaryVectorView(binaryVectorView& parent,int offset=0,size_t width=-1) {
+						
+					//}
 					binaryVectorView();
 					binaryVectorView(binaryVectorView& other) {
 						this->internals()=other.internals();
