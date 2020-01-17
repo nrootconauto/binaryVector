@@ -7,6 +7,12 @@
 			//nibble table
 			//nibble lookup table
 			extern const std::vector<const char*> nibbleTable;;
+			namespace {
+					struct internalPairOffset {
+							signed long offset;
+							signed long width;
+					};
+			}
 			//addressor
 			template<typename type> class addressor {
 					public:
@@ -466,7 +472,12 @@
 			};
 			template<class T,class internal> binaryVectorBase<internal> getMasterAddressor(const T item);
 			template<typename internal_,typename parentType> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
-					void updateWindow() {};
+					internalPairOffset updateWindow() const {
+						internalPairOffset retVal;
+						retVal.offset=this->baseOffset;
+						retVal.width=this->width();
+						return retVal;
+					};
 					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) const {
 						const signed long sizeInBits=8*sizeof(internal_);
 						//boundary is after the highest addreable Xinternal
@@ -502,6 +513,11 @@
 						this->writeType(offset_,value);
 					}
 					internal_ readType(signed long offset_) const {
+						auto indexWidth=this->updateWindow();
+						//DOES NOT USE this->baseOffset or this->width()
+						signed int baseOffset=indexWidth.offset;
+						signed int width=indexWidth.width;
+						
 						const signed long sizeInBits=8*sizeof(internal_);
 						signed long timesEight=offset_*sizeInBits;
 						signed long offset=virtualOffset+baseOffset;
@@ -519,7 +535,7 @@
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
 						//raimder of the width
-						signed long widthRemainder=(this->width()+this->baseOffset)%sizeInBits;
+						signed long widthRemainder=(width+baseOffset)%sizeInBits;
 						//===function to make end mask
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
@@ -533,6 +549,10 @@
 						return firstHalf|lastHalf;
 					}
 					signed long firstXinternalInParent() const {
+						//DOES NOT USE this->baseOffset
+						auto widthOffset=this->updateWindow();
+						signed long baseOffset=widthOffset.offset;
+						//
 						signed long offset=baseOffset+virtualOffset;
 						signed long wholeInternal=(offset)/(8*sizeof(internal_));
 						//if negative be sure to address the internal containing the remainder
@@ -542,14 +562,23 @@
 					}
 					protected:
 					signed long _internal_firstXinternalInParent() const {
-						signed long wholeInternal=(this->baseOffset)/(8*sizeof(internal_));
+						auto widthOffset=this->updateWindow();
+						//DOES NOT USE this->baseOffset
+						signed long baseOffset=widthOffset.offset;
+						
+						signed long wholeInternal=(baseOffset)/(8*sizeof(internal_));
 						//if negative be sure to address the internal containing the remainder
-						if(this->baseOffset<0)
-							return wholeInternal-((this->baseOffset&(8*sizeof(internal_)))?1:0);
+						if(baseOffset<0)
+							return wholeInternal-((baseOffset&(8*sizeof(internal_)))?1:0);
 						return wholeInternal;
 					}
 				public:
 					void writeType(signed long offset_,internal_ value) {
+						//DOES NOT USE this-> baseOffset of this->width()
+						auto indexWidth=this->updateWindow();
+						signed int baseOffset=indexWidth.offset;
+						signed int width=indexWidth.width;
+						
 						const signed long timesEight=8*sizeof(internal_);
 						//do nothign if no parent
 						if(parent==nullptr)
@@ -565,7 +594,7 @@
 						auto& internals=parent->internals();
 						const internal_ ones=~(internal_)0;
 						//remainder of the width in bits
-						signed long widthRemainder=(this->width()+this->baseOffset)%timesEight;
+						signed long widthRemainder=(width+baseOffset)%timesEight;
 						//function to apply "End" mask
 						internal_ relativeValue=value; //(value<<(offset_*timesEight)>>(offset_*timesEight);
 						//
@@ -578,7 +607,7 @@
 								internals.writeType(Xinternals,((relativeValue<<baseRemainder)&mask)|leftOver);
 							}
 							//if writing into thingh
-							if(this->baseOffset+this->width()>timesEight)
+							if(baseOffset+width>timesEight)
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
@@ -593,6 +622,13 @@
 							}
 						}
 						signed long size() const {
+							//DOES NOT USE this->width() ot this->baseOffset
+							auto indexWidth=this->updateWindow();
+							signed long baseOffset=indexWidth.offset;
+							signed long width=indexWidth.width;
+							//if 0 width,0 size
+							if(width==0)
+								return 0;
 							const signed long typeWidth=8*sizeof(internal_);
 							//return 0 if no parent
 							if(this->parent==nullptr)
@@ -603,7 +639,7 @@
 							if(this->width()==-1)
 								return (this->parent->size()-baseOffset)/typeWidth+addOne;
 							//
-							return this->width()/typeWidth+addOne;
+							return width/typeWidth+addOne;
 						}
 						//dummy
 						void resize(size_t size) {
@@ -612,6 +648,7 @@
 						return parent->internals();
 						}
 						signed long  width() const {
+							
 							if(this->viewSize==-1)
 								return this->parent->internals().width()-this->baseOffset;
 							return this->viewSize;
@@ -623,8 +660,17 @@
 					signed long virtualOffset;
 			};
 			template<typename internal_,typename T> class viewAddressor<internal_,viewAddressor<internal_, T>> {
-					void updateMaster() {
-						std::cout<<"gdfhgs"<<std::endl;
+					//return is relative to start of base binaryVector that is not virtually addressed
+					internalPairOffset updateWindow() const {
+						internalPairOffset retVal;
+						internalPairOffset temp=this->parent->template updateMaster();
+						retVal.offset=temp.offset+this->viewAddressor::baseOffset;
+						//0 width if offset is past the end of the parent
+						if(retVal.offset>=temp.offset+temp.width)
+							retVal.width=0;
+						else
+							retVal.width=(temp.width+temp.offset)-retVal.offset; //end-start 
+						return retVal;
 					}
 			};
 			//the binaryVector
