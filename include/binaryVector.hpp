@@ -465,7 +465,8 @@
 					internalVector internalVec;
 			};
 			template<class T,class internal> binaryVectorBase<internal> getMasterAddressor(const T item);
-			template<typename internal_,class parentType> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
+			template<typename internal_,typename parentType> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
+					void updateWindow() {};
 					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) const {
 						const signed long sizeInBits=8*sizeof(internal_);
 						//boundary is after the highest addreable Xinternal
@@ -566,20 +567,25 @@
 						//remainder of the width in bits
 						signed long widthRemainder=(this->width()+this->baseOffset)%timesEight;
 						//function to apply "End" mask
+						internal_ relativeValue=value; //(value<<(offset_*timesEight)>>(offset_*timesEight);
 						//
 							if(Xinternals>=0&&Xinternals<internals.size()) {
 								internal_ mask=endMask(Xinternals,baseRemainder,widthRemainder);
 								//apply mask to old vvalue
 								internal_ leftOver=internals.readType(Xinternals);
-								leftOver&=(~mask)|~(ones<<(baseRemainder));
-								internals.writeType(Xinternals,((value<<baseRemainder)&mask)|leftOver);
+								internal_ maskWithOffset=(mask)^((~(ones<<baseRemainder))&mask);//change(xor) the first baseOffset bits of the mask
+								leftOver&=~maskWithOffset;
+								internals.writeType(Xinternals,((relativeValue<<baseRemainder)&mask)|leftOver);
 							}
-							if(baseRemainder+this->width()>timesEight)
+							//if writing into thingh
+							if(this->baseOffset+this->width()>timesEight)
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
 								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
 								internal_ leftOver=internals.readType(Xinternals+1);
-								leftOver&=~(ones>>(timesEight-widthRemainder)); //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
-								internals.writeType(Xinternals+1, ((value>>(timesEight-widthRemainder)&mask)|leftOver));
+								internal_ maskWithOffset=mask^((~(ones>>(timesEight-baseRemainder)))&mask);
+								leftOver&=~maskWithOffset; //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
+								if(mask!=0)
+									internals.writeType(Xinternals+1, (((relativeValue>>(timesEight-baseRemainder))&mask)|leftOver));
 							}
 							//clip if writing on the last Internal
 							if(Xinternals>=this->parent->internals().size()-1) {
@@ -615,6 +621,11 @@
 					signed long viewSize;
 					signed long baseOffset;
 					signed long virtualOffset;
+			};
+			template<typename internal_,typename T> class viewAddressor<internal_,viewAddressor<internal_, T>> {
+					void updateMaster() {
+						std::cout<<"gdfhgs"<<std::endl;
+					}
 			};
 			//the binaryVector
 			template<typename internal=unsigned int> using binaryVector=binaryVectorBase<internal,addressor<internal>>;

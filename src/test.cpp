@@ -7,9 +7,10 @@
 	typedef unsigned  int testType;
 	TEST_CASE_TEMPLATE_DEFINE("View tests",T,view_tests) {
 		const unsigned int viewIndex=10;
-		const unsigned int viewWidth=16;
+		const unsigned int viewWidth=9;
 		const unsigned int size=sizeof(unsigned int)*8;
-		const unsigned int viewMask=0xffff<<viewIndex;
+		const unsigned int mask=0x1ff;
+		const unsigned int viewMask=mask<<viewIndex;
 		SUBCASE("view left shift") {
 			const int shiftAmount=2;
 			unsigned int value=0xffffffff;
@@ -27,7 +28,7 @@
 				REQUIRE_MESSAGE(((mastervalue&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
 				//check value outside of the "window"
 				REQUIRE_MESSAGE(((originalValue&~viewMask))==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
-				REQUIRE_MESSAGE((result)==((value>>viewIndex)&(0xffff)),"View doesnt match computed");
+				REQUIRE_MESSAGE((result)==((value>>viewIndex)&(mask)),"View doesnt match computed");
 				//
 				//value<<=shiftAmount;
 				//view.writeBlock(1,0);
@@ -54,7 +55,7 @@
 				REQUIRE_MESSAGE(((mastervalue&viewMask)>>viewIndex)==((value&viewMask)>>viewIndex),"value");
 				//check value outside of the "window"
 				REQUIRE_MESSAGE(((originalValue&~viewMask))==(vec.template loadIntoPrimitive<unsigned int>(0)&~viewMask),"value outsie of");
-				REQUIRE_MESSAGE((result)==((value>>viewIndex)&(0xffff)),"View doesnt match computed");
+				REQUIRE_MESSAGE((result)==((value>>viewIndex)&(mask)),"View doesnt match computed");
 				//
 				//value<<=shiftAmount;
 				//view.writeBlock(1,0);
