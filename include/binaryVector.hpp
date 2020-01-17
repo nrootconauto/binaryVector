@@ -517,6 +517,7 @@
 						//DOES NOT USE this->baseOffset or this->width()
 						signed int baseOffset=indexWidth.offset;
 						signed int width=indexWidth.width;
+						auto readFrom=this->baseContent();
 						
 						const signed long sizeInBits=8*sizeof(internal_);
 						signed long timesEight=offset_*sizeInBits;
@@ -536,6 +537,7 @@
 						internal_ lastHalf=0;
 						//raimder of the width
 						signed long widthRemainder=(width+baseOffset)%sizeInBits;
+
 						//===function to make end mask
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
@@ -645,7 +647,7 @@
 						void resize(size_t size) {
 						}
 					auto& baseContent() {
-						return parent->internals();
+						return parent->baseContent();
 						}
 						signed long  width() const {
 							
@@ -676,9 +678,9 @@
 			//the binaryVector
 			template<typename internal=unsigned int> using binaryVector=binaryVectorBase<internal,addressor<internal>>;
 			// 
-			template<typename internal> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,binaryVector<internal>>> {
+			template<typename internal,typename parentType=binaryVector<internal>> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,parentType>> {
 				public:
-					typedef binaryVector<internal> parentType;
+					//typedef binaryVector<internal> parentType;
 					signed long blockStart() const {
 						return this->internalVec.firstXinternalInParent();
 					}
