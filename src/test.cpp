@@ -7,9 +7,9 @@
 	typedef unsigned  int testType;
 	TEST_CASE_TEMPLATE_DEFINE("View tests",T,view_tests) {
 		const unsigned int viewIndex=10;
-		const unsigned int viewWidth=9;
+		const unsigned int viewWidth=17;
 		const unsigned int size=sizeof(unsigned int)*8;
-		const unsigned int mask=0x1ff;
+		const unsigned int mask=0x1ffff;
 		const unsigned int viewMask=mask<<viewIndex;
 		SUBCASE("view left shift") {
 			const int shiftAmount=2;
