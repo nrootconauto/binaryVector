@@ -1,3 +1,4 @@
+![logo](https://raw.githubusercontent.com/nrootconauto/binaryVector/master/logo.png)
 # binaryVector
 
 This is a vector that is aimed at btiwise operations such as bit shifting and masking. 
