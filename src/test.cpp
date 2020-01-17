@@ -43,8 +43,8 @@
 			unsigned int value=0xffffffff;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
-			binaryVector::binaryVectorView<T> view1(vec,viewIndex,viewWidth);
-			binaryVector::binaryVectorView<T,decltype(view1)> view(view1);
+			binaryVector::binaryVectorView<T> view(vec,viewIndex,viewWidth);
+			//binaryVector::binaryVectorView<T,decltype(view1)> view(view1);
 			vec.loadValue(value);
 			for(int i=0;i<viewWidth;i+=shiftAmount) {
 				auto result=view.template loadIntoPrimitive<unsigned int>(0);

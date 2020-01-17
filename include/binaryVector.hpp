@@ -50,7 +50,7 @@
 					signed long firstXinternalInParent() const {
 						return 0;
 					}
-					addressor& baseContent() const {
+					addressor& baseContent()  {
 						return *this;
 					}
 					template<class binVec> binVec& getParent() const {
@@ -517,7 +517,7 @@
 						//DOES NOT USE this->baseOffset or this->width()
 						signed int baseOffset=indexWidth.offset;
 						signed int width=indexWidth.width;
-						auto readFrom=this->baseContent();
+						addressor<internal_>& readFrom=this->baseContent();
 						
 						const signed long sizeInBits=8*sizeof(internal_);
 						signed long timesEight=offset_*sizeInBits;
@@ -542,11 +542,11 @@
 						//===get first half from previous
 						//(Xinternals must be above 0 as it checks the previous item)
 						if(Xinternals+1>=0&&Xinternals+1<parent->internals().size()) {
-							firstHalf=(parent->readBlock(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-virtualRemainder;
+							firstHalf=(readFrom.readType(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-virtualRemainder;
 						}
 						//=== second half 
 						if(Xinternals>=0&&Xinternals<parent->internals().size()) {
-							lastHalf=(parent->readBlock(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>virtualRemainder;
+							lastHalf=(readFrom.readType(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>virtualRemainder;
 						}
 						return firstHalf|lastHalf;
 					}
@@ -580,7 +580,7 @@
 						auto indexWidth=this->updateWindow();
 						signed int baseOffset=indexWidth.offset;
 						signed int width=indexWidth.width;
-						
+						addressor<internal_>& internals=this->baseContent();
 						const signed long timesEight=8*sizeof(internal_);
 						//do nothign if no parent
 						if(parent==nullptr)
@@ -593,7 +593,6 @@
 						//Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
 						//remainder=(remainder<0)?timesEight+remainder:remainder;
 						//
-						auto& internals=parent->internals();
 						const internal_ ones=~(internal_)0;
 						//remainder of the width in bits
 						signed long widthRemainder=(width+baseOffset)%timesEight;
@@ -646,9 +645,9 @@
 						//dummy
 						void resize(size_t size) {
 						}
-					auto& baseContent() {
-						return parent->baseContent();
-						}
+					addressor<internal_>& baseContent() const {
+						return parent->internals().baseContent();
+					}
 						signed long  width() const {
 							
 							if(this->viewSize==-1)
