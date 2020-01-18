@@ -478,10 +478,9 @@
 						retVal.width=this->width();
 						return retVal;
 					};
-					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder) const {
+					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder,signed long boundary) const {
 						const signed long sizeInBits=8*sizeof(internal_);
 						//boundary is after the highest addreable Xinternal
-						signed long boundary=this->_internal_firstXinternalInParent()+this->size();
 						//trims the view to not see past the mask
 						const internal_ ones=~0;
 						internal_ mask;
@@ -512,7 +511,26 @@
 					void _writeType(signed long offset_,internal_ value) {
 						this->writeType(offset_,value);
 					}
+					
+					struct __internalStruct {
+							signed long Xinternals;
+							signed long boundary;
+							signed long widthRemainder;
+					};
 					internal_ readType(signed long offset_) const {
+						signed long widthRemainder=(this->width()+baseOffset)%(8*sizeof(internal_));
+						signed long boundary=this->_internal_firstXinternalInParent()+this->size();
+						signed long Xinternals=(baseOffset+offset_*8*sizeof(internal_))/(8*sizeof(internal_));
+						__internalStruct precomputed;
+						precomputed.boundary=boundary;
+						precomputed.widthRemainder=widthRemainder;
+						precomputed.Xinternals=Xinternals;
+						return this->__readType(offset_,precomputed);
+					}
+					internal_ __readType(signed long offset_,__internalStruct& precomputed) const {						
+						auto& Xinternals=precomputed.Xinternals;
+						auto& boundary=precomputed.boundary;
+						auto& widthRemainder=precomputed.widthRemainder;
 						auto indexWidth=this->updateWindow();
 						//DOES NOT USE this->baseOffset or this->width()
 						signed int baseOffset=indexWidth.offset;
@@ -521,13 +539,11 @@
 						
 						const signed long sizeInBits=8*sizeof(internal_);
 						signed long timesEight=offset_*sizeInBits;
-						signed long offset=virtualOffset+baseOffset;
+						signed long offset=baseOffset;
 						//make sure not addressing a negatice value(and see if there is room for a reaiminder)
 						if(baseOffset>2*sizeInBits+timesEight)
 							return 0;
-						signed long remainder=(baseOffset)%sizeInBits;
 						signed long virtualRemainder=offset%sizeInBits;
-						signed long Xinternals=(timesEight+offset)/(sizeInBits);
 						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
 						Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
 						virtualRemainder=(virtualRemainder<0)?sizeInBits+virtualRemainder:virtualRemainder;
@@ -536,17 +552,18 @@
 						internal_ firstHalf=0;
 						internal_ lastHalf=0;
 						//raimder of the width
-						signed long widthRemainder=(width+baseOffset)%sizeInBits;
+						
 
 						//===function to make end mask
 						//===get first half from previous
+						
 						//(Xinternals must be above 0 as it checks the previous item)
 						if(Xinternals+1>=0&&Xinternals+1<parent->internals().size()) {
-							firstHalf=(readFrom.readType(Xinternals+1)&this->endMask(Xinternals+1, remainder, widthRemainder))<<8*sizeof(internal_)-virtualRemainder;
+							firstHalf=(readFrom.readType(Xinternals+1)&this->endMask(Xinternals+1, virtualRemainder, widthRemainder,boundary))<<8*sizeof(internal_)-virtualRemainder;
 						}
 						//=== second half 
 						if(Xinternals>=0&&Xinternals<parent->internals().size()) {
-							lastHalf=(readFrom.readType(Xinternals)&this->endMask(Xinternals, remainder, widthRemainder ))>>virtualRemainder;
+							lastHalf=(readFrom.readType(Xinternals)&this->endMask(Xinternals, virtualRemainder, widthRemainder,boundary ))>>virtualRemainder;
 						}
 						return firstHalf|lastHalf;
 					}
@@ -592,15 +609,20 @@
 						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
 						//Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
 						//remainder=(remainder<0)?timesEight+remainder:remainder;
+						signed long boundary=this->_internal_firstXinternalInParent()+this->size();
 						//
 						const internal_ ones=~(internal_)0;
 						//remainder of the width in bits
 						signed long widthRemainder=(width+baseOffset)%timesEight;
 						//function to apply "End" mask
 						internal_ relativeValue=value; //(value<<(offset_*timesEight)>>(offset_*timesEight);
+						__internalStruct precomputed;
+						precomputed.Xinternals=Xinternals;
+						precomputed.boundary=boundary;
+						precomputed.widthRemainder=widthRemainder;
 						//
 							if(Xinternals>=0&&Xinternals<internals.size()) {
-								internal_ mask=endMask(Xinternals,baseRemainder,widthRemainder);
+								internal_ mask=endMask(Xinternals,baseRemainder,widthRemainder,boundary);
 								//apply mask to old vvalue
 								internal_ leftOver=internals.readType(Xinternals);
 								internal_ maskWithOffset=(mask)^((~(ones<<baseRemainder))&mask);//change(xor) the first baseOffset bits of the mask
@@ -610,7 +632,7 @@
 							//if writing into thingh
 							if(baseOffset+width>timesEight)
 							if(Xinternals>=0&&Xinternals+1<internals.size()) {
-								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder);
+								internal_ mask=endMask(Xinternals+1, baseRemainder, widthRemainder,boundary);
 								internal_ leftOver=internals.readType(Xinternals+1);
 								internal_ maskWithOffset=mask^((~(ones>>(timesEight-baseRemainder)))&mask);
 								leftOver&=~maskWithOffset; //CLEAR FIRST (SIZE-REMIANCDER)BYTES FOR WRITE(endMask chooses all of the bits THAT ARE ADRESSABLE BY internalVec,SO MAKE SURE TO STORE THOSE NOT AFFECT BY YHT WRITE OPERATION)
@@ -662,7 +684,7 @@
 			};
 			template<typename internal_,typename T> class viewAddressor<internal_,viewAddressor<internal_, T>> {
 					//return is relative to start of base binaryVector that is not virtually addressed
-					internalPairOffset updateWindow() const {
+					virtual internalPairOffset updateWindow() const {
 						internalPairOffset retVal;
 						internalPairOffset temp=this->parent->template updateMaster();
 						retVal.offset=temp.offset+this->viewAddressor::baseOffset;
