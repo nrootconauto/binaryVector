@@ -80,7 +80,7 @@
 							this->internalVec._writeType(index,0);
 					}
 					//write into a primitive
-					template<typename toLoadInto> toLoadInto loadIntoPrimitive(signed long index) const {
+					template<typename toLoadInto> toLoadInto loadIntoPrimitive(signed long index) {
 						toLoadInto retVal=0;
 						internal temp;
 						long currentByte=0;
@@ -96,7 +96,7 @@
 						return this->internalVec.size();
 					}
 					//binary operators
-					binaryVectorBase<internal,addressor<internal>> operator ~() const {
+					binaryVectorBase<internal,addressor<internal>> operator ~() {
 						//make a blank new binaryVectorBase
 						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						//copy over
@@ -106,7 +106,7 @@
 						temp.template clipEndExtraBits<binaryVectorBase>();
 						return temp;
 					}
-					template<class T> binaryVectorBase operator&(const binaryVectorBase<internal,T>& other) const {
+					template<class T> binaryVectorBase operator&(binaryVectorBase<internal,T>& other) {
 						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						//copy over and apply & operator
 						auto [start,end]=this->getAffectedRange(other);
@@ -114,7 +114,7 @@
 							temp.internals()._writeType(i,this->internalVec._readType(i)&other.internalVec._readType(i));
 						return temp;
 					}
-					template<class T> binaryVectorBase operator|(const binaryVectorBase<internal,T>& other) const {
+					template<class T> binaryVectorBase operator|(binaryVectorBase<internal,T>& other) {
 						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
@@ -122,7 +122,7 @@
 							temp.internals()._writeType(i,this->internalVec._readType(i)|other.internalVec._readType(i));
 						return temp;
 					}
-					template<class T> binaryVectorBase operator^ (const binaryVectorBase<internal,T>& other) const {
+					template<class T> binaryVectorBase operator^ (binaryVectorBase<internal,T>& other) {
 						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
@@ -187,7 +187,7 @@
 						return *this;
 					}
 					//access operator
-					internal readBlock(size_t index) const {
+					internal readBlock(size_t index) {
 						return this->internalVec.readType(index);
 					}
 					void writeBlock(size_t index,size_t value) {
@@ -212,7 +212,7 @@
 						this->clipEndExtraBits<binaryVectorBase>();
 					}
 					//internal is to be equal or lesser in size to otherInternal
-					template<typename otherInternal> void copy(const binaryVectorBase<otherInternal>& other,int offset=0) {
+					template<typename otherInternal> void copy(binaryVectorBase<otherInternal>& other,int offset=0) {
 						this->resize(offset+other.size());
 						if(sizeof(otherInternal)==sizeof(internal)) {
 							for(int i=0;i!=other.blockSize();i++)
@@ -322,7 +322,7 @@
 						this->bitCount=count*8*sizeof(internal);
 					}
 					//constructor
-					template<class otherInteral> binaryVectorBase(const binaryVectorBase<otherInteral>& other):internalVec((void*)this) {
+					template<class otherInteral> binaryVectorBase(binaryVectorBase<otherInteral>& other):internalVec((void*)this) {
 						this->copy(other);
 					}
 					//
@@ -418,7 +418,7 @@
 					//iterator class
 					template <typename internal_> class internalsIt: public std::iterator<std::bidirectional_iterator_tag, internal_> {
 						public:
-							internalsIt(const binaryVectorBase<internal_>& container_=nullptr,size_t where=0):offset(where),container(container_)  {}
+							internalsIt(binaryVectorBase<internal_>& container_=nullptr,size_t where=0):offset(where),container(container_)  {}
 							internalsIt& operator++() {
 								offset++;
 								return *this;
@@ -427,24 +427,24 @@
 								offset--;
 								return *this;
 							}
-							internal_ operator*() const {
+							internal_ operator*()  {
 								return this->container.readBlock(this->offset);
 							}
-							bool operator==(const internalsIt& other) const {
+							bool operator==(const internalsIt& other)  {
 								return (other.offset==offset)&&(&other.container==&container);
 							}
-							bool operator!=(const internalsIt& other) const {
+							bool operator!=(const internalsIt& other)  {
 								return !((*this)==other);
 							}
 						private:
 							size_t offset;
-							const binaryVectorBase<internal_>& container;
+							binaryVectorBase<internal_>& container;
 					};
-					internalsIt<internal> begin() const {
+					internalsIt<internal> begin()  {
 						internalsIt<internal> temp(*this);
 						return temp;
 					}
-					internalsIt<internal> end() const {
+					internalsIt<internal> end()  {
 						internalsIt<internal> temp(*this,this->internalVec.size());
 						return temp;
 					}
@@ -457,7 +457,7 @@
 					}
 					template<class T=binaryVectorBase> void clipEndExtraBits() {
 						auto& master=this->internals().template getParent<T>();
-						auto& baseContent=master.internals();
+						auto& baseContent=this->internals().baseContent();
 						auto totalBits=8*sizeof(internal)*baseContent.size();
 						auto toClip=totalBits-master.size();
 						//makes a internal full of ones then shifts it right to make a mask
@@ -470,8 +470,26 @@
 				protected:
 					internalVector internalVec;
 			};
-			template<class T,class internal> binaryVectorBase<internal> getMasterAddressor(const T item);
 			template<typename internal_,typename parentType> class viewAddressor:public std::iterator<std::output_iterator_tag, internal_> {
+					struct __internalStruct {
+							signed long Xinternals;
+							signed long boundary;
+							signed long widthRemainder;
+					};
+					__internalStruct precomputed;
+					void precompute(signed long offset_,bool doAll=false) {
+						//if computing at the previous offset,skip recomputing the current offset(checks for change in offset)
+						if(precomputedAt!=offset_) {
+							signed long Xinternals=(baseOffset+offset_*8*sizeof(internal_))/(8*sizeof(internal_));
+							precomputed.Xinternals=Xinternals;
+						}
+						if(doAll) {
+							signed long widthRemainder=(this->width()+baseOffset)%(8*sizeof(internal_));
+							signed long boundary=this->_internal_firstXinternalInParent()+this->size();
+							precomputed.boundary=boundary;
+							precomputed.widthRemainder=widthRemainder;
+						}
+					}
 					internalPairOffset updateWindow() const {
 						internalPairOffset retVal;
 						retVal.offset=this->baseOffset;
@@ -497,37 +515,23 @@
 					}
 				public:
 					//constructor
-					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent(static_cast<parentType*>(parent_)), baseOffset(offset_), viewSize(width_),virtualOffset(0) {
+					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent(static_cast<parentType*>(parent_)), baseOffset(offset_), viewSize(width_),precomputedAt(-1) {
+						this->precompute(0,true);
 					}
 					template<class type> type& getParent() const {
 						return *(type*)this->parent;
 					}
-					internal_ _readType(signed long offset_) const {
+					internal_ _readType(signed long offset_) {
 						return this->readType(offset_);
-					}
-					void applyReadOffset(signed long offset_) {
-						this->virtualOffset-=offset_;
 					}
 					void _writeType(signed long offset_,internal_ value) {
 						this->writeType(offset_,value);
 					}
-					
-					struct __internalStruct {
-							signed long Xinternals;
-							signed long boundary;
-							signed long widthRemainder;
-					};
-					internal_ readType(signed long offset_) const {
-						signed long widthRemainder=(this->width()+baseOffset)%(8*sizeof(internal_));
-						signed long boundary=this->_internal_firstXinternalInParent()+this->size();
-						signed long Xinternals=(baseOffset+offset_*8*sizeof(internal_))/(8*sizeof(internal_));
-						__internalStruct precomputed;
-						precomputed.boundary=boundary;
-						precomputed.widthRemainder=widthRemainder;
-						precomputed.Xinternals=Xinternals;
-						return this->__readType(offset_,precomputed);
+					internal_ readType(signed long offset_) {
+						this->precompute(offset_);
+						return this->__readType(offset_);
 					}
-					internal_ __readType(signed long offset_,__internalStruct& precomputed) const {						
+					internal_ __readType(signed long offset_) const {						
 						auto& Xinternals=precomputed.Xinternals;
 						auto& boundary=precomputed.boundary;
 						auto& widthRemainder=precomputed.widthRemainder;
@@ -545,7 +549,6 @@
 							return 0;
 						signed long virtualRemainder=offset%sizeInBits;
 						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
-						Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
 						virtualRemainder=(virtualRemainder<0)?sizeInBits+virtualRemainder:virtualRemainder;
 						
 						//if baseOffset goes past negative,assume 0 IF there is a reminder 
@@ -572,7 +575,7 @@
 						auto widthOffset=this->updateWindow();
 						signed long baseOffset=widthOffset.offset;
 						//
-						signed long offset=baseOffset+virtualOffset;
+						signed long offset=baseOffset;
 						signed long wholeInternal=(offset)/(8*sizeof(internal_));
 						//if negative be sure to address the internal containing the remainder
 						if(offset<0)
@@ -593,6 +596,7 @@
 					}
 				public:
 					void writeType(signed long offset_,internal_ value) {
+						this->precompute(offset_);
 						//DOES NOT USE this-> baseOffset of this->width()
 						auto indexWidth=this->updateWindow();
 						signed int baseOffset=indexWidth.offset;
@@ -603,23 +607,18 @@
 						if(parent==nullptr)
 							return;
 						//
-						signed long offset=baseOffset+offset_*timesEight;
-						signed long Xinternals=offset/timesEight;
-						signed long baseRemainder=(baseOffset)%timesEight;
 						//ensure virtualRmainder is positive and Xinternals will be adjusted if remainder is negative(cut into previous Internal and make the offset relative to the end of the prevbious Xinternal)
 						//Xinternals-=(baseOffset+timesEight>=-virtualOffset)?0:1;
 						//remainder=(remainder<0)?timesEight+remainder:remainder;
-						signed long boundary=this->_internal_firstXinternalInParent()+this->size();
 						//
 						const internal_ ones=~(internal_)0;
 						//remainder of the width in bits
-						signed long widthRemainder=(width+baseOffset)%timesEight;
+						signed long widthRemainder=precomputed.widthRemainder;
 						//function to apply "End" mask
 						internal_ relativeValue=value; //(value<<(offset_*timesEight)>>(offset_*timesEight);
-						__internalStruct precomputed;
-						precomputed.Xinternals=Xinternals;
-						precomputed.boundary=boundary;
-						precomputed.widthRemainder=widthRemainder;
+						auto& Xinternals=precomputed.Xinternals;
+						auto& boundary=precomputed.boundary;
+						auto baseRemainder=baseOffset%timesEight;
 						//
 							if(Xinternals>=0&&Xinternals<internals.size()) {
 								internal_ mask=endMask(Xinternals,baseRemainder,widthRemainder,boundary);
@@ -665,8 +664,14 @@
 							return width/typeWidth+addOne;
 						}
 						//dummy
-						void resize(size_t size) {
+						void resize(signed long size) {
+							this->viewSize=size;
+							this->precompute(0,true);
 						}
+					void move(signed long where) {
+						this->baseOffset=where;
+						this->precompute(0,true);
+					}
 					addressor<internal_>& baseContent() const {
 						return parent->internals().baseContent();
 					}
@@ -678,9 +683,9 @@
 						}
 						parentType* parent;
 				private:
+					signed long precomputedAt;
 					signed long viewSize;
 					signed long baseOffset;
-					signed long virtualOffset;
 			};
 			template<typename internal_,typename T> class viewAddressor<internal_,viewAddressor<internal_, T>> {
 					//return is relative to start of base binaryVector that is not virtually addressed
@@ -718,11 +723,6 @@
 					binaryVectorView(size_t sizeInBits)= delete;
 					binaryVectorView(internal* items,size_t count=-1) = delete;
 					//template<class T,class base> binaryVectorView<T,base> friend virtualShift(binaryVectorView<T,base>& input,signed long offset);
-			};
-			template<typename T> binaryVectorView<T> virtualShift(binaryVectorBase<T,addressor<T>>& input,signed long offset) {
-				binaryVectorView<T> retVal(input,0,-1);
-				retVal.internals().applyReadOffset(offset);
-				return retVal;
 			};
 	}
 	//stream stuff;
