@@ -68,17 +68,19 @@
 		SUBCASE("bitwise And") {
 			unsigned int value=0xfe2324;
 			unsigned int originalValue=value;
-			unsigned int  toApply=0xe12;
-			binaryVector::binaryVector<T> vec(sizeof(unsigned int)*8);
+			unsigned int  toApply=0x12;
+			binaryVector::binaryVector<T> vec(sizeof(unsigned int)*sizeof(value));
 			vec.template loadValue(originalValue);
 			binaryVector::binaryVector<T> byte(sizeof(unsigned int)*8);
 			byte.loadValue(toApply);
 			for(int i=0;i!=sizeof(unsigned int)*8;i++) {
 				vec.template loadValue(originalValue);
-				vec>>=1;
+				byte>>=1;
+				std::cout<<"vec:"<<vec<<std::endl;
 				std::cout<<"shifted byte"<<byte<<std::endl;
+				vec&=byte;
 				auto computedResult=vec.template loadIntoPrimitive<unsigned int>(0);
-				auto referenceResult=originalValue&toApply>>i;
+				auto referenceResult=originalValue&(toApply>>(i+1));
 				std::cout<<"Referce expected"<<referenceResult<<std::endl;
 				REQUIRE_MESSAGE(computedResult==referenceResult,"Bitwie and failed");
 			}

@@ -149,7 +149,7 @@
 				public:
 					//or
 					//binary equality operators
-					template<class vector> binaryVectorBase& operator |=(const binaryVectorBase<internal,vector>& other) {
+					template<class vector> binaryVectorBase& operator |=(binaryVectorBase<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//go though and or
 						for(auto i=baseOffset;i!=minSize;i++) {
@@ -159,7 +159,7 @@
 						return *this;
 					}
 					//xor !!!
-					template<class vector> binaryVectorBase& operator ^=(const binaryVectorBase<internal,vector>& other) {
+					template<class vector> binaryVectorBase& operator ^=(binaryVectorBase<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//
 						for(auto i=baseOffset;i!=minSize;i++) {
@@ -170,7 +170,7 @@
 						return *this;
 					}
 					//
-					template<class vector> binaryVectorBase& operator &=(const binaryVectorBase<internal,vector>& other) {
+					template<class vector> binaryVectorBase& operator &=(binaryVectorBase<internal,vector>& other) {
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//erase the zeros before baseOffset
 						for(auto i=baseOffset-1;i>=0;i--)
@@ -461,7 +461,7 @@
 						auto totalBits=8*sizeof(internal)*baseContent.size();
 						auto toClip=totalBits-master.size();
 						//makes a internal full of ones then shifts it right to make a mask
-						auto backIndex=internalVec.size()-1; //last elem
+						auto backIndex=baseContent.size()-1; //last elem
 						const internal ones=~(internal)0;
 						baseContent.writeType(backIndex,baseContent.readType(backIndex)&(ones>>toClip));
 					}
