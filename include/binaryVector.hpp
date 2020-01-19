@@ -5,6 +5,7 @@
 #include <iterator>
 #include <algorithm>
 #include <sstream>
+#include <initializer_list>
 	//#define BINARY_VECTOR_MUTEX
 	//for mutexes
 #ifdef BINARY_VECTOR_MUTEX 
@@ -256,7 +257,7 @@
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//go though and or
 						for(auto i=baseOffset;i!=minSize;i++) {
-							this->internalVec._writeType(i,this->internalVec._readType(i)|other->internals()._readType(i));
+							this->internalVec._writeType(i,this->internalVec._readType(i)|other.internals()._readType(i));
 						}
 						this->clipEndExtraBits<binaryVectorBase>();
 						return *this;
@@ -266,7 +267,7 @@
 						auto [baseOffset,minSize]=this->getAffectedRange(other);
 						//
 						for(auto i=baseOffset;i!=minSize;i++) {
-							this->internalVec._writeType(i,this->internalVec._readType(i)^other->internals()._readType(i));
+							this->internalVec._writeType(i,this->internalVec._readType(i)^other.internals()._readType(i));
 						}
 						//
 						this->clipEndExtraBits<binaryVectorBase>();
@@ -407,6 +408,11 @@
 								mergeIntoThis(toChug);
 						}
 						this->clipEndExtraBits<binaryVectorBase>();
+					}
+					binaryVectorBase(std::initializer_list<internal> values):internalVec(this) {
+						auto index=0;
+						for(auto& value:values)
+							this->writeBlock(index++, value);
 					}
 					//constructor
 					binaryVectorBase(size_t sizeInBits):internalVec(this) {
