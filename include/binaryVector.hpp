@@ -1,9 +1,112 @@
+#ifndef BINARY_VECTOR_H
+#define BINARY_VECTOR_H
 #include <vector>
 #include <iostream>
 #include <iterator>
 #include <algorithm>
 #include <sstream>
+	//#define BINARY_VECTOR_MUTEX
+	//for mutexes
+#ifdef BINARY_VECTOR_MUTEX 
+#include <skinny_mutex.h>
+#endif
+	
 	namespace binaryVector {
+			namespace  {
+#ifdef BINARY_VECTOR_MUTEX
+					template<typename T> constexpr size_t _itemsPerMutex=sizeof(skinny_mutex_t)/sizeof(T)+((sizeof(skinny_mutex_t)/sizeof(T)==0)?1:0); //
+					template<typename T,unsigned int itemsPerMutex=_itemsPerMutex<T>> class internalContainer {
+							enum  globalStateEnum {globallyFree,globalResize,globalOperation};
+						public:
+							std::vector<skinny_mutex_t> mutexs;
+							void resize(size_t size) {
+								this->globallyLocked=globalResize;
+								//lock so dont read while resizing
+								skinny_mutex_lock(&this->globalMutex);
+								//wait for all mutexes acting on the vector to die out
+								for(auto& mutex:this->mutexs)
+									skinny_mutex_lock(&mutex);
+								//resize
+								this->items.resize(size);
+								//resize & initialize the new new mutxes after resize
+								auto oldSize=this->mutexs.size();
+								this->mutexs.resize(size/itemsPerMutex+((size/itemsPerMutex==0)?1:0));
+								for(auto x=oldSize;x!=this->mutexs.size();x++)
+									skinny_mutex_init(&this->mutexs[x]);
+								skinny_mutex_unlock(&this->globalMutex);
+								//unlokc the mutexes old mutexs
+								for(int x=0;x!=oldSize;x++)
+									skinny_mutex_unlock(&this->mutexs[x]);
+								//let the wiating threads continue
+								pthread_cond_signal(&this->globalWaiter);
+								//set free
+								this->globallyLocked=globallyFree;
+							}
+							skinny_mutex_t& getMutexForElement(size_t element) {
+								return mutexs[element/itemsPerMutex];
+							}
+							T read(size_t index,bool internalOperation=false) {
+								T retVal;
+								//lambda
+								auto readLambda=[&,this]()->void {
+									//get pointer to pair
+									auto& stuffPtr=this->getMutexForElement(index);
+									//lock individual thing
+									skinny_mutex_lock(&stuffPtr->mutex);
+									//assign return valeu
+									retVal=items[index];
+									//
+									skinny_mutex_unlock(&stuffPtr->mutex);
+								};
+								//NOTE,read can happen during globalLock if operating not resizing
+								//dont bother playing with mutexes if globally locked
+								if(globalState==globalOperation&&internalOperation) {
+									retVal=items[index];
+								} else if(globalState==globallyFree) {
+									readLambda();
+								} else {
+									skinny_mutex_cond_wait(&this->globalWaiter,&this->globalMutex);
+									readLambda();
+								}
+								return retVal;
+							}
+							internalContainer() {
+								skinny_mutex_init(&this->globalMutex);
+								pthread_cond_init(&this->globalWaiter, nullptr);
+								capacity=0;
+							}
+							~internalContainer() {
+								skinny_mutex_destroy(&this->globalMutex);
+								pthread_cond_destroy(&this->globalWaiter);
+							}
+						private:
+							skinny_mutex_t globalMutex;
+							pthread_cond_t globalWaiter;
+							globalStateEnum globalState;;
+							std::vector<T>* items;
+							unsigned int capacity;
+					};
+#else
+					//make
+					template<typename T> class internalContainer {
+						public:
+							void resize(size_t size) {
+								this->internal.resize(size);
+							}
+							T read(size_t index) {
+								return this->internal[index];
+							}
+							size_t size()  {
+								return this->internal.size();
+							}
+							void write(size_t index,T value) {
+								this->internal[index]=value;
+							}
+						private:
+							std::vector<T> internal;
+					};
+#endif
+			}
 			//nibble table
 			//nibble lookup table
 			extern const std::vector<const char*> nibbleTable;;
@@ -17,55 +120,55 @@
 			template<typename type> class addressor {
 					public:
 					//DOES NOT BOUND CHECK
-					type _readType(signed long index) const {
-						return container[index];
+					type _readType(signed long index)  {
+						return container.read(index);
 					}
 					//DOES NOT BONUD CHECK
 					void  _writeType(signed long index,type value) {
-						container[index]=value;
+						container.write(index,value);
 					}
-					type readType(signed long index) const {
+					type readType(signed long index)  {
 						if(index<0)
 							return 0;
 						if(index>=this->container.size())
 							return 0;
-						return container[index];
+						return container.read(index);
 					}
 					void writeType(signed long index,type value) {
 						if(index<0)
 							return;
 						if(index>=this->container.size())
 							return;
-						container[index]=value;
+						container.write(index,value);
 					}
-					signed long size() const {
+					signed long size()  {
 						return container.size();
 					}
-					signed long width() const {
+					signed long width()  {
 						return this->container.size()*sizeof(type)*8;
 					}
 					void resize(size_t size) {
 						this->container.resize(size);
 					}
-					signed long firstXinternalInParent() const {
+					signed long firstXinternalInParent()  {
 						return 0;
 					}
 					addressor& baseContent()  {
 						return *this;
 					}
-					template<class binVec> binVec& getParent() const {
+					template<class binVec> binVec& getParent()  {
 						return *(binVec*)this->_parent;
 					}
 					addressor(void*const  vec):_parent(vec) {}
 				private:
 					void* _parent;
-					std::vector<type> container;
+					internalContainer<type> container;
 			};
 			//forward delcaration
 			//binary Vector
 			template<typename internal=unsigned int, class internalVector=addressor<internal>> class binaryVectorBase {
 				public:
-					signed long blockStart() const {
+					signed long blockStart()  {
 						return 0;
 					}
 					template<typename T> void loadValue(const T& value) {
@@ -92,7 +195,7 @@
 						}
 						return retVal;
 					}
-					size_t blockSize() const {
+					size_t blockSize()  {
 						return this->internalVec.size();
 					}
 					//binary operators
@@ -132,7 +235,7 @@
 					}
 				private:
 					//get affected range
-					template<class otherAddressor> std::pair<signed long,signed long> getAffectedRange(const binaryVectorBase<internal,otherAddressor>& other) const {
+					template<class otherAddressor> std::pair<signed long,signed long> getAffectedRange( binaryVectorBase<internal,otherAddressor>& other)  {
 						//choose the maximum base offset
 						auto thisOffset=this->blockStart();
 						auto otherOffset=other.blockStart();
@@ -452,7 +555,7 @@
 					internalVector& internals()  {
 						return internalVec;
 					}
-					signed long size() const {
+					signed long size()  {
 						return this->bitCount;
 					}
 					template<class T=binaryVectorBase> void clipEndExtraBits() {
@@ -490,13 +593,13 @@
 							precomputed.widthRemainder=widthRemainder;
 						}
 					}
-					internalPairOffset updateWindow() const {
+					internalPairOffset updateWindow()  {
 						internalPairOffset retVal;
 						retVal.offset=this->baseOffset;
 						retVal.width=this->width();
 						return retVal;
 					};
-					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder,signed long boundary) const {
+					internal_ endMask(unsigned long Xinternal,signed long remainder,signed long widthRemainder,signed long boundary)  {
 						const signed long sizeInBits=8*sizeof(internal_);
 						//boundary is after the highest addreable Xinternal
 						//trims the view to not see past the mask
@@ -518,7 +621,7 @@
 					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent(static_cast<parentType*>(parent_)), baseOffset(offset_), viewSize(width_),precomputedAt(-1) {
 						this->precompute(0,true);
 					}
-					template<class type> type& getParent() const {
+					template<class type> type& getParent()  {
 						return *(type*)this->parent;
 					}
 					internal_ _readType(signed long offset_) {
@@ -531,7 +634,7 @@
 						this->precompute(offset_);
 						return this->__readType(offset_);
 					}
-					internal_ __readType(signed long offset_) const {						
+					internal_ __readType(signed long offset_)  {						
 						auto& Xinternals=precomputed.Xinternals;
 						auto& boundary=precomputed.boundary;
 						auto& widthRemainder=precomputed.widthRemainder;
@@ -570,7 +673,7 @@
 						}
 						return firstHalf|lastHalf;
 					}
-					signed long firstXinternalInParent() const {
+					signed long firstXinternalInParent()  {
 						//DOES NOT USE this->baseOffset
 						auto widthOffset=this->updateWindow();
 						signed long baseOffset=widthOffset.offset;
@@ -583,7 +686,7 @@
 						return wholeInternal;
 					}
 					protected:
-					signed long _internal_firstXinternalInParent() const {
+					signed long _internal_firstXinternalInParent()  {
 						auto widthOffset=this->updateWindow();
 						//DOES NOT USE this->baseOffset
 						signed long baseOffset=widthOffset.offset;
@@ -643,7 +746,7 @@
 								parent->template clipEndExtraBits<parentType>();
 							}
 						}
-						signed long size() const {
+						signed long size()  {
 							//DOES NOT USE this->width() ot this->baseOffset
 							auto indexWidth=this->updateWindow();
 							signed long baseOffset=indexWidth.offset;
@@ -672,10 +775,10 @@
 						this->baseOffset=where;
 						this->precompute(0,true);
 					}
-					addressor<internal_>& baseContent() const {
+					addressor<internal_>& baseContent()  {
 						return parent->internals().baseContent();
 					}
-						signed long  width() const {
+						signed long  width()  {
 							
 							if(this->viewSize==-1)
 								return this->parent->internals().width()-this->baseOffset;
@@ -689,7 +792,7 @@
 			};
 			template<typename internal_,typename T> class viewAddressor<internal_,viewAddressor<internal_, T>> {
 					//return is relative to start of base binaryVector that is not virtually addressed
-					virtual internalPairOffset updateWindow() const {
+					virtual internalPairOffset updateWindow()  {
 						internalPairOffset retVal;
 						internalPairOffset temp=this->parent->template updateMaster();
 						retVal.offset=temp.offset+this->viewAddressor::baseOffset;
@@ -707,7 +810,7 @@
 			template<typename internal,typename parentType=binaryVector<internal>> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,parentType>> {
 				public:
 					//typedef binaryVector<internal> parentType;
-					signed long blockStart() const {
+					signed long blockStart()  {
 						return this->internalVec.firstXinternalInParent();
 					}
 					binaryVectorView(parentType& parent,int offset=0,size_t width=-1) {
@@ -739,3 +842,4 @@
 	}
 	namespace binaryGraph {
 	}
+#endif

@@ -1,7 +1,17 @@
 [
 {
-  "directory": "/home/tc/projects/binaryGraph/build",
-  "command": "/home/tc/.zapcc/build/bin/zapcc++   -I/home/tc/projects/binaryGraph/./ext/bitarray    -std=gnu++17 -o CMakeFiles/binaryGraph.dir/src/binaryGraph.cpp.o -c /home/tc/projects/binaryGraph/src/binaryGraph.cpp",
-  "file": "/home/tc/projects/binaryGraph/src/binaryGraph.cpp"
+  "directory": "/home/tc/projects/binaryGraph/build2",
+  "command": "/usr/bin/c++   -I/home/tc/projects/binaryGraph/./include -I/home/tc/projects/binaryGraph/ext/./skinny-mutex  -g   -pthread -std=gnu++17 -o CMakeFiles/test.dir/src/test.cpp.o -c /home/tc/projects/binaryGraph/src/test.cpp",
+  "file": "/home/tc/projects/binaryGraph/src/test.cpp"
+},
+{
+  "directory": "/home/tc/projects/binaryGraph/build2",
+  "command": "/usr/bin/c++   -I/home/tc/projects/binaryGraph/./include -I/home/tc/projects/binaryGraph/ext/./skinny-mutex  -g   -pthread -std=gnu++17 -o CMakeFiles/binaryVector.dir/src/binaryVector.cpp.o -c /home/tc/projects/binaryGraph/src/binaryVector.cpp",
+  "file": "/home/tc/projects/binaryGraph/src/binaryVector.cpp"
+},
+{
+  "directory": "/home/tc/projects/binaryGraph/build2/ext",
+  "command": "/usr/bin/cc   -g   -pthread -o CMakeFiles/libSkinnyMutex.dir/skinny-mutex/skinny_mutex.c.o   -c /home/tc/projects/binaryGraph/ext/skinny-mutex/skinny_mutex.c",
+  "file": "/home/tc/projects/binaryGraph/ext/skinny-mutex/skinny_mutex.c"
 }
 ]
