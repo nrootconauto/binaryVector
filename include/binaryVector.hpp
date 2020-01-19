@@ -430,6 +430,8 @@
 					}
 					//
 					binaryVectorBase& operator <<=(signed long bits) {
+						if(bits==0)
+							return *this;
 						if(bits<0) {
 							return *this>>=-bits;
 						}
@@ -481,6 +483,8 @@
 						return *this;
 					}
 					binaryVectorBase& operator>>= (signed long bits) {
+						if(bits==0)
+							return *this;
 						if(bits<0) {
 							return *this<<=-bits;
 						}
@@ -553,7 +557,7 @@
 					}
 					//gets iternals
 					internalVector& internals()  {
-						return internalVec;
+						return this->internalVec;
 					}
 					signed long size()  {
 						return this->bitCount;
@@ -838,15 +842,18 @@
 							bool updateFlag;
 					};
 					template<typename internal> class nestedBinaryViewBase {
+						protected:
 							offsetWidth __updateWindowDimension(offsetWidth parentDimension) {
 								auto& where=parentDimension;
 								//dont recompute if not changed(or the parent(s) wasnt changed)
 								if(!(where.updateFlag||this->ow.updateFlag))
 									this->ow;
+								signed long parentEnd=where.offset+where.width;
+								//(*look here*)if baseWidth is -1,assume width of parent
+								this->ow.width=(this->baseWidth==-1)?where.width:this->baseWidth;
 								//theorical locations
 								signed long offset=where.offset+this->baseOffset;
-								signed long end=offset+this->baseWidth;
-								signed long parentEnd=where.offset+where.width;
+								signed long end=offset+this->ow.width;//see (*look here*),uses this->ow.width as opposed to tihs->basWidth
 								//===== the width
 								if(end>parentEnd) {
 									//trim width to not go past end of parent
@@ -859,8 +866,8 @@
 								if(offset<where.offset)
 									this->ow.offset;
 								//===== update the view
-								view.move(this->ow.offset);
-								view.resize(this->ow.width);
+								view->internals().move(this->ow.offset);
+								view->resize(this->ow.width);
 								//clear flag (for this) 
 								this->ow.updateFlag=false;
 								//MAKE SURE TO TOGGLE UPDATE FLAG ON RETURNED VALUE(that will be used by dependants)
@@ -869,6 +876,9 @@
 								return this->ow;
 							};
 						public:
+							binaryVectorView<internal> asView() {
+								return *this->view;
+							};
 							virtual offsetWidth updateWindowDimension() {
 								std::cout<<"Dont use me"<<std::endl;
 								offsetWidth retVal;
@@ -907,7 +917,7 @@
 							offsetWidth ow; //the computed offset and width
 							signed long baseWidth;
 							signed long baseOffset;
-							binaryVectorView<internal> view;	
+							binaryVectorView<internal>* view;	
 					};
 					
 			}
@@ -955,6 +965,7 @@
 				public:
 					using parent=binaryVectorView<internal>;
 					nestedBinaryView(parent& parentView,signed long index=0,signed long width=-1):originalView(&parentView) {
+						this->view=originalView;
 						//for base class
 						this->baseOffset=index;
 						this->baseWidth=width;
@@ -966,29 +977,35 @@
 					//SMAE AS nestedBinaryView<internal,parent>,but doesnt do a parent check
 					offsetWidth updateWindowDimension() {
 						offsetWidth where;
-						where.offset=this->originalView;
-						where.width=this->originalView.internals().offset();
+						where.offset=this->originalView->internals().offset();
+						where.width=this->originalView->internals().width();
 						return this->__updateWindowDimension(where);
 					}
 					template<typename other> nestedBinaryView<internal, parent>& operator&=(other item) {
-						this->view&=item;
+						*this->view&=item;
 						return *this;
 					}
 					template<typename other> nestedBinaryView<internal, parent>& operator|=(other item) {
-						this->view|=item;
+						*this->view|=item;
 						return *this;
 					}
 					template<typename other> nestedBinaryView<internal, parent>& operator^=(other item) {
-						this->view^=item;
+						*this->view^=item;
 						return *this;
 					}
 					nestedBinaryView<internal, parent>& operator<<=(signed long offset) {
-						this->view<<=offset;
+						*this->view<<=offset;
 						return *this;
 					}
 					nestedBinaryView<internal, parent>& operator>>=(signed long offset) {
-						this->view>>=offset;
+						*this->view>>=offset;
 						return *this;
+					}
+					template<typename T> T loadIntoPrimitive(signed long offset) {
+						return this->asView().template loadIntoPrimitive<T>(offset);
+					}
+					template<typename T> void loadValue(const T& value) {
+						this->asView().template loadValue(value);
 					}
 				private:
 					binaryVectorView<internal>* originalView;
@@ -1005,5 +1022,9 @@
 		//stream it
 		out<<str;
 		return out;
+	}
+	//for nested binary view
+	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::nestedBinaryView<internal, vectorType> thing) {
+		return out<<thing.asView();
 	}
 #endif

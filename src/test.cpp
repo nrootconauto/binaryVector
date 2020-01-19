@@ -16,7 +16,8 @@
 			unsigned int value=0xffffffff;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
-			binaryVector::binaryVectorView<T> view(vec,viewIndex,viewWidth);
+			binaryVector::binaryVectorView<T> view1(vec,viewIndex,viewWidth);
+			binaryVector::nestedBinaryView<T, decltype(view1)> view(view1);
 			vec.loadValue(value);
 			//view.writeBlock(1,0b10000001);
 			for(int i=0;i<viewWidth;i+=shiftAmount) {
