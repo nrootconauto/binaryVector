@@ -19,9 +19,14 @@ list(FILTER testSources INCLUDE REGEX "^[^\.].+\.cpp$")
 #add the files to the project
 add_executable(test ./src/test.cpp)
 
+
 # make the binary vector library
-add_library(binaryVector STATIC ./src/binaryVector.cpp ./)
+add_library(binaryVector STATIC ./src/binaryVector.cpp ./include/binaryVector.hpp)
 #add bitarray lib
 target_include_directories(binaryVector PUBLIC ./include)
+
+#make the library use skinny pthread Mutexes;
+add_subdirectory(./ext)
+target_link_libraries(binaryVector PUBLIC libSkinnyMutex)
 
 target_link_libraries(test PUBLIC binaryVector)

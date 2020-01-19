@@ -778,13 +778,16 @@
 					addressor<internal_>& baseContent()  {
 						return parent->internals().baseContent();
 					}
-						signed long  width()  {
-							
-							if(this->viewSize==-1)
-								return this->parent->internals().width()-this->baseOffset;
-							return this->viewSize;
-						}
-						parentType* parent;
+					signed long  width()  {
+						
+						if(this->viewSize==-1)
+							return this->parent->internals().width()-this->baseOffset;
+						return this->viewSize;
+					}
+					parentType* parent;
+					signed long offset() {
+						return this->baseOffset;
+					};
 				private:
 					signed long precomputedAt;
 					signed long viewSize;
@@ -807,8 +810,9 @@
 			//the binaryVector
 			template<typename internal=unsigned int> using binaryVector=binaryVectorBase<internal,addressor<internal>>;
 			// 
-			template<typename internal,typename parentType=binaryVector<internal>> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,parentType>> {
+			template<typename internal> class binaryVectorView:public binaryVectorBase<internal,viewAddressor<internal,binaryVector<internal>>> {
 				public:
+					using parentType=binaryVector<internal>;
 					//typedef binaryVector<internal> parentType;
 					signed long blockStart()  {
 						return this->internalVec.firstXinternalInParent();
@@ -827,6 +831,168 @@
 					binaryVectorView(internal* items,size_t count=-1) = delete;
 					//template<class T,class base> binaryVectorView<T,base> friend virtualShift(binaryVectorView<T,base>& input,signed long offset);
 			};
+			namespace {
+					struct offsetWidth {
+							signed long offset;
+							signed long width;
+							bool updateFlag;
+					};
+					template<typename internal> class nestedBinaryViewBase {
+							offsetWidth __updateWindowDimension(offsetWidth parentDimension) {
+								auto& where=parentDimension;
+								//dont recompute if not changed(or the parent(s) wasnt changed)
+								if(!(where.updateFlag||this->ow.updateFlag))
+									this->ow;
+								//theorical locations
+								signed long offset=where.offset+this->baseOffset;
+								signed long end=offset+this->baseWidth;
+								signed long parentEnd=where.offset+where.width;
+								//===== the width
+								if(end>parentEnd) {
+									//trim width to not go past end of parent
+									this->ow.width=parentEnd-end;
+								} else if(end<where.offset) {
+									//if end is before the start,dont address anything
+									this->ow.width=0;
+								}
+								//===== the offset
+								if(offset<where.offset)
+									this->ow.offset;
+								//===== update the view
+								view.move(this->ow.offset);
+								view.resize(this->ow.width);
+								//clear flag (for this) 
+								this->ow.updateFlag=false;
+								//MAKE SURE TO TOGGLE UPDATE FLAG ON RETURNED VALUE(that will be used by dependants)
+								auto retVal=this->ow;
+								retVal.updateFlag=true;
+								return this->ow;
+							};
+						public:
+							virtual offsetWidth updateWindowDimension() {
+								std::cout<<"Dont use me"<<std::endl;
+								offsetWidth retVal;
+								return retVal;
+							}
+					void setOffset(signed long offset) {
+						this->baseOffset=offset;
+						this->ow.updateFlag=true;
+					};
+					signed long getOffset() {
+						return this->baseOffset;
+					};
+					void setWidth(signed long width) {
+						this->baseWidth=width;
+						this->ow.updateFlag=true;
+					}
+					signed long getWidth() {
+						return this->baseWidth;
+					}
+					template<typename other> binaryVector<internal> operator&(other item) {
+						return view&item;
+					}
+					template<typename other> binaryVector<internal> operator|(other item) {
+						return view|item;
+					}
+					template<typename other> binaryVector<internal> operator^(other item) {
+						return view^item;
+					}
+					binaryVector<internal> operator<<(signed long offset) {
+						return view<<offset;
+					}
+					binaryVector<internal> operator>>(signed long offset) {
+						return view>>offset;
+					}
+						protected:
+							offsetWidth ow; //the computed offset and width
+							signed long baseWidth;
+							signed long baseOffset;
+							binaryVectorView<internal> view;	
+					};
+					
+			}
+			template<class internal,class parent> class nestedBinaryView:public nestedBinaryViewBase<internal> {
+					
+				public:
+					using nestedBinaryViewBase<internal>::nestedBinaryViewBase;
+					nestedBinaryView(parent& parentView,signed long index=0,signed long width=-1):parentItem(&parentView) {
+						//for base class
+						this->baseOffset=index;
+						this->baseWidth=width;
+						//update the dimension
+						this->ow.updateFlag=true;
+						this->updateWindowDimension();
+					}
+					offsetWidth updateWindowDimension() override{
+						auto where=parentItem->updateWindowDimension();
+						return this->__updateWindowDimension(where);
+					}
+					template<typename other> nestedBinaryView<internal, parent>& operator&=(other item) {
+						this->view&=item;
+						return *this;
+					}
+					template<typename other> nestedBinaryView<internal, parent>& operator|=(other item) {
+						this->view|=item;
+						return *this;
+					}
+					template<typename other> nestedBinaryView<internal, parent>& operator^=(other item) {
+						this->view^=item;
+						return *this;
+					}
+					nestedBinaryView<internal, parent>& operator<<=(signed long offset) {
+						this->view<<=offset;
+						return *this;
+					}
+					nestedBinaryView<internal, parent>& operator>>=(signed long offset) {
+						this->view>>=offset;
+						return *this;
+					}
+				private:
+					parent* parentItem;
+			};
+			//the first level of nesting has no parent other than a binaryVectorView
+			template<typename internal> class nestedBinaryView<internal, binaryVectorView<internal>>:public nestedBinaryViewBase<internal> {
+				public:
+					using parent=binaryVectorView<internal>;
+					nestedBinaryView(parent& parentView,signed long index=0,signed long width=-1):originalView(&parentView) {
+						//for base class
+						this->baseOffset=index;
+						this->baseWidth=width;
+						//update the dimension
+						this->ow.updateFlag=true;
+						this->updateWindowDimension();
+					}
+					using nestedBinaryViewBase<internal>::nestedBinaryViewBase;
+					//SMAE AS nestedBinaryView<internal,parent>,but doesnt do a parent check
+					offsetWidth updateWindowDimension() {
+						offsetWidth where;
+						where.offset=this->originalView;
+						where.width=this->originalView.internals().offset();
+						return this->__updateWindowDimension(where);
+					}
+					template<typename other> nestedBinaryView<internal, parent>& operator&=(other item) {
+						this->view&=item;
+						return *this;
+					}
+					template<typename other> nestedBinaryView<internal, parent>& operator|=(other item) {
+						this->view|=item;
+						return *this;
+					}
+					template<typename other> nestedBinaryView<internal, parent>& operator^=(other item) {
+						this->view^=item;
+						return *this;
+					}
+					nestedBinaryView<internal, parent>& operator<<=(signed long offset) {
+						this->view<<=offset;
+						return *this;
+					}
+					nestedBinaryView<internal, parent>& operator>>=(signed long offset) {
+						this->view>>=offset;
+						return *this;
+					}
+				private:
+					binaryVectorView<internal>* originalView;
+			};
 	}
 	//stream stuff;
 	template<typename internal,class vectorType> std::ostream& operator<<(std::ostream& out,binaryVector::binaryVectorBase<internal,vectorType> thing) {
@@ -839,7 +1005,5 @@
 		//stream it
 		out<<str;
 		return out;
-	}
-	namespace binaryGraph {
 	}
 #endif
