@@ -621,6 +621,7 @@
 						return mask;
 					}
 				public:
+					
 					//constructor
 					viewAddressor(void* parent_=nullptr,size_t offset_=0,signed long width_=-1): parent(static_cast<parentType*>(parent_)), baseOffset(offset_), viewSize(width_),precomputedAt(-1) {
 						this->precompute(0,true);
@@ -855,19 +856,21 @@
 								//(*look here*)if baseWidth is -1,assume width of parent
 								this->ow.width=(this->baseWidth==-1)?where.width:this->baseWidth;
 								//theorical locations
+								//===== the offset
 								signed long offset=where.offset+this->baseOffset;
+								if(offset<where.offset)
+									offset=where.offset; //clip to the start of the parent
 								signed long end=offset+this->ow.width;//see (*look here*),uses this->ow.width as opposed to tihs->basWidth
 								//===== the width
 								if(end>parentEnd) {
 									//trim width to not go past end of parent
 									this->ow.width=parentEnd-end;
-								} else if(end<where.offset) {
+								} else if(end<=where.offset) {
 									//if end is before the start,dont address anything
 									this->ow.width=0;
 								}
-								//===== the offset
-								if(offset<where.offset)
-									this->ow.offset;
+								//
+								this->ow.offset=offset;
 								//===== update the view
 								view.internals().move(this->ow.offset);
 								view.resize(this->ow.width);
@@ -935,6 +938,8 @@
 				public:
 					using nestedBinaryViewBase<internal>::nestedBinaryViewBase;
 					nestedBinaryView(parent& parentView,signed long index=0,signed long width=-1):parentItem(&parentView) {
+						//assign
+						this->view=parentView.view;
 						//for base class
 						this->baseOffset=index;
 						this->baseWidth=width;
@@ -947,22 +952,27 @@
 						return this->__updateWindowDimension(where);
 					}
 					template<typename other> nestedBinaryView<internal, parent>& operator&=(other item) {
+						this->updateWindowDimension();
 						this->view&=item;
 						return *this;
 					}
 					template<typename other> nestedBinaryView<internal, parent>& operator|=(other item) {
+						this->updateWindowDimension();
 						this->view|=item;
 						return *this;
 					}
 					template<typename other> nestedBinaryView<internal, parent>& operator^=(other item) {
+						this->updateWindowDimension();
 						this->view^=item;
 						return *this;
 					}
 					nestedBinaryView<internal, parent>& operator<<=(signed long offset) {
+						this->updateWindowDimension();
 						this->view<<=offset;
 						return *this;
 					}
 					nestedBinaryView<internal, parent>& operator>>=(signed long offset) {
+						this->updateWindowDimension();
 						this->view>>=offset;
 						return *this;
 					}
