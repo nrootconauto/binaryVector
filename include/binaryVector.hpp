@@ -913,14 +913,18 @@
 					signed long getOffset() {
 						return this->baseOffset;
 					};
-					void setWidth(signed long width) {
+							void setWidth(signed long width) {
 						this->baseWidth=width;
 						this->ow.updateFlag=true;
 					}
-					signed long getWidth() {
-						this->updateWindowDimension();
-						return this->baseWidth;
-					}
+							signed long getWidth() {
+								this->updateWindowDimension();
+								return this->baseWidth;
+							}
+							operator binaryVectorView<internal>() {
+								this->updateWindowDimension();
+								return *this->view;
+							}
 					template<typename other> binaryVector<internal> operator&(other item) {
 						this->updateWindowDimension();
 						return view&item;
