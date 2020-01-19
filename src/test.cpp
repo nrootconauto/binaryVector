@@ -5,6 +5,16 @@
 #include <utility>
 	#include "doctest.h"
 	typedef unsigned  int testType;
+	TEST_CASE_TEMPLATE_DEFINE("Example Usages",T,examples) {
+		//contructor
+		binaryVector::binaryVector<unsigned int> tenBits(10); //an empty bit vector of 10 bits 
+		binaryVector::binaryVector<unsigned int> valueOfTwelve({12}); //a vector with a value of twelve
+		//binary operation
+		tenBits|=valueOfTwelve;
+		//print
+		std::cout<<tenBits<<std::endl;
+		//
+	}
 	TEST_CASE_TEMPLATE_DEFINE("View tests",T,view_tests) {
 		const unsigned int viewIndex=10;
 		const unsigned int viewWidth=17;
@@ -176,4 +186,5 @@
 	}
 	//
 	//	TEST_CASE_TEMPLATE_INVOKE(shift_tests,unsigned int);
+	TEST_CASE_TEMPLATE_INVOKE(examples,unsigned char);
 	TEST_CASE_TEMPLATE_INVOKE(view_tests,unsigned char);
