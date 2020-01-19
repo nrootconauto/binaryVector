@@ -429,6 +429,22 @@
 						this->copy(other);
 					}
 					//
+					template<class otherVector> bool operator==(binaryVectorBase<internal,otherVector>& other) {
+						auto [startBound,endBound]=this->getAffectedRange(other);
+						for(auto x=startBound;x!=endBound;x++)
+							if(other.readBlock(x)!=this->readBlock(x))
+								return false;
+						return true;
+					}
+					//
+					template<class otherVector> bool operator!=(binaryVectorBase<internal,otherVector>& other) {
+						auto [startBound,endBound]=this->getAffectedRange(other);
+						for(auto x=startBound;x!=endBound;x++)
+							if(other.readBlock(x)!=this->readBlock(x))
+								return true;
+						return false;
+					}
+					//
 					binaryVectorBase& operator <<=(signed long bits) {
 						if(bits==0)
 							return *this;
@@ -925,6 +941,14 @@
 						this->updateWindowDimension();
 						return view>>offset;
 					}
+							template<typename T> T loadIntoPrimitive(signed long offset) {
+								this->updateWindowDimension();
+								return this->asView().template loadIntoPrimitive<T>(offset);
+							}
+							template<typename T> void loadValue(const T& value) {
+								this->updateWindowDimension();
+								this->asView().template loadValue(value);
+							}							
 						protected:
 							offsetWidth ow; //the computed offset and width
 							signed long baseWidth;
@@ -1024,14 +1048,6 @@
 						this->updateWindowDimension();
 						this->view>>=offset;
 						return *this;
-					}
-					template<typename T> T loadIntoPrimitive(signed long offset) {
-						this->updateWindowDimension();
-						return this->asView().template loadIntoPrimitive<T>(offset);
-					}
-					template<typename T> void loadValue(const T& value) {
-						this->updateWindowDimension();
-						this->asView().template loadValue(value);
 					}
 				private:
 					binaryVectorView<internal>* originalView;
