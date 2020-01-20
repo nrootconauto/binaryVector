@@ -4,7 +4,7 @@
 This is a vector that is aimed at btiwise operations such as bit shifting and masking. 
 
 ## QuickStart
-See [Quick Start](QuckStart)
+![See Here](#quick-start)
 
 ## Addressing the bits
 
@@ -105,9 +105,7 @@ This changes the offset of the view(The offset will be clipped to the offset of 
 
  You can use the standard methods of `binaryVector`
 
-## QuickStart
-
-![QucikStart](quick reference)
+## Quick Start
 
 Quick usage
 ```cpp
