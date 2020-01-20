@@ -436,8 +436,8 @@
 					}
 					//
 					template<class otherVector> bool operator==(binaryVectorBase<internal,otherVector>& other) {
-						auto [startBound,endBound]=this->getAffectedRange(other);
-						for(auto x=startBound;x!=endBound;x++)
+						auto endBound=(other.size()>this->size())?other.size():this-size();
+						for(auto x=0;x!=endBound;x++)
 							if(other.readBlock(x)!=this->readBlock(x))
 								return false;
 						return true;
@@ -843,9 +843,10 @@
 						this->internalVec.resize(size);
 					}
 					using parentType=binaryVector<internal>;
-					//typedef binaryVector<internal> parentType;
+					//returns the first addressable item(relative to the view)returns 0 as 0 is the first item
 					signed long blockStart()  {
-						return this->internalVec.firstXinternalInParent();
+						return 0;
+						//return this->internalVec.firstXinternalInParent();
 					}
 					binaryVectorView(parentType& parent,int offset=0,size_t width=-1) {
 						this->internals()=viewAddressor<internal,parentType>(&parent,offset,width);
