@@ -27,6 +27,7 @@
 			unsigned int value=0xffffffff;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
+			//nested view cliped at end
 			binaryVector::binaryVectorView<T> view1(vec,viewIndex-2,viewWidth+2);
 			binaryVector::nestedBinaryView<T, decltype(view1)> view(view1,2);
 			vec.loadValue(value);

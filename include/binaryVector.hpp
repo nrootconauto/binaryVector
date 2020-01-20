@@ -116,7 +116,6 @@
 							signed long offset;
 							signed long width;
 					};
-			}
 			//addressor
 			template<typename type> class addressor {
 					public:
@@ -897,6 +896,7 @@
 						return retVal;
 					}
 			};
+			}
 			//the binaryVector
 			template<typename internal=unsigned int> using binaryVector=binaryVectorBase<internal,addressor<internal>>;
 			// 
