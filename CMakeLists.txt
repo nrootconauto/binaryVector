@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
+
+option(USE_MUTEXES "This flag will compile to use pthread mutexes if ON" OFF)
+
 #debug build
 set(CMAKE_CONFIGURATION_TYPES "Debug" CACHE STRING "" FORCE)
 #SET(CMAKE_CXX_COMPILER /home/tc/.zapcc/build/bin/zapcc++)
@@ -25,8 +28,10 @@ add_library(binaryVector STATIC ./src/binaryVector.cpp ./include/binaryVector.hp
 #add bitarray lib
 target_include_directories(binaryVector PUBLIC ./include)
 
-#make the library use skinny pthread Mutexes;
-add_subdirectory(./ext)
-target_link_libraries(binaryVector PUBLIC libSkinnyMutex)
-
+if(${USE_MUTEXES})
+		#make the library use skinny pthread Mutexes;
+		add_subdirectory(./ext)
+		add_definitions(-DBINARY_VECTOR_MUTEX)
+		target_link_libraries(binaryVector PUBLIC libSkinnyMutex)
+endif(${USE_MUTEXES})
 target_link_libraries(test PUBLIC binaryVector)
