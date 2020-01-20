@@ -11,6 +11,7 @@
 		binaryVector::binaryVector<unsigned int> valueOfTwelve({12}); //a vector with a value of twelve
 		//binary operation
 		tenBits|=valueOfTwelve;
+		tenBits&=4;
 		//print
 		std::cout<<tenBits<<std::endl;
 		//
@@ -26,8 +27,8 @@
 			unsigned int value=0xffffffff;
 			unsigned int originalValue=value;
 			binaryVector::binaryVector<T> vec(size);
-			binaryVector::binaryVectorView<T> view1(vec,viewIndex,viewWidth);
-			binaryVector::nestedBinaryView<T, decltype(view1)> view(view1);
+			binaryVector::binaryVectorView<T> view1(vec,viewIndex-2,viewWidth+2);
+			binaryVector::nestedBinaryView<T, decltype(view1)> view(view1,2);
 			vec.loadValue(value);
 			//view.writeBlock(1,0b10000001);
 			for(int i=0;i<viewWidth;i+=shiftAmount) {

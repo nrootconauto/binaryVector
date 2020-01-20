@@ -210,28 +210,58 @@
 						temp.template clipEndExtraBits<binaryVectorBase>();
 						return temp;
 					}
-					template<class T> binaryVectorBase operator&(binaryVectorBase<internal,T>& other) {
+					template<class T> auto operator&(binaryVectorBase<internal,T>& other) {
 						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						//copy over and apply & operator
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
 							temp.internals()._writeType(i,this->internalVec._readType(i)&other.internalVec._readType(i));
+						this->clipEndExtraBits();
 						return temp;
 					}
-					template<class T> binaryVectorBase operator|(binaryVectorBase<internal,T>& other) {
+					template<typename T> binaryVectorBase<internal,addressor<internal>> operator^(T other) {
+						auto start=this->internals().blockStart();
+						auto end=start+this->internals().blockSize();
+						binaryVectorBase<internal,addressor<internal>> retVal(sizeof(T)*8);
+						for(auto i=start;i!=end;i++)
+							retVal.internals()._writeType(i,this->internalVec._readType(i)^(other>>i*8*sizeof(internal)));
+						this->clipEndExtraBits();
+						return retVal;
+					}
+					template<typename T> binaryVectorBase<internal,addressor<internal>> operator|(T other) {
+						auto start=this->internals().blockStart();
+						auto end=start+this->internals().blockSize();
+						binaryVectorBase<internal,addressor<internal>> retVal(sizeof(T)*8);
+						for(auto i=start;i!=end;i++)
+							retVal.internals()._writeType(i,this->internalVec._readType(i)|(other>>i*8*sizeof(internal)));
+						this->clipEndExtraBits();
+						return retVal;
+					}
+					template<typename T> binaryVectorBase<internal,addressor<internal>> operator&(T other) {
+						auto start=this->internals().blockStart();
+						auto end=start+this->internals().blockSize();
+						binaryVectorBase<internal,addressor<internal>> retVal(sizeof(T)*8);
+						for(auto i=start;i!=end;i++)
+							retVal.internals()._writeType(i,this->internalVec._readType(i)&(other>>i*8*sizeof(internal)));
+						this->clipEndExtraBits();
+						return retVal;
+					}
+					template<class T> auto operator|(binaryVectorBase<internal,T>& other) {
 						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
 							temp.internals()._writeType(i,this->internalVec._readType(i)|other.internalVec._readType(i));
+						this->clipEndExtraBits();
 						return temp;
 					}
-					template<class T> binaryVectorBase operator^ (binaryVectorBase<internal,T>& other) {
+					template<class T> auto operator^ (binaryVectorBase<internal,T>& other) {
 						auto temp=binaryVectorBase<internal,addressor<internal>>(this->size());
 						temp.copy(*this);
 						auto [start,end]=this->getAffectedRange(other);
 						for(auto i=start;i!=end;i++)
 							temp.internals()._writeType(i,this->internalVec._readType(i)^other.internalVec._readType(i));
+						this->clipEndExtraBits();
 						return temp;
 					}
 				private:
@@ -251,6 +281,38 @@
 						return std::pair<signed long,signed long>(baseOffset,minEnd);
 					}
 				public:
+					//binary agianst pritive
+					template<typename T> binaryVectorBase& operator &=(T other) {
+						auto baseOffset=this->blockStart();
+						auto end=baseOffset+this->size();
+						//go though and or
+						for(auto i=baseOffset;i!=end;i++) {
+							this->internalVec._writeType(i,this->internalVec._readType(i)&(other>>i*8*sizeof(internal)));
+						}
+						this->clipEndExtraBits<binaryVectorBase>();
+						return *this;
+					}
+					template<typename T> binaryVectorBase& operator ^=(T other) {
+						auto baseOffset=this->blockStart();
+						auto end=baseOffset+this->size();
+						//go though and or
+						for(auto i=baseOffset;i!=end;i++) {
+							this->internalVec._writeType(i,this->internalVec._readType(i)^(other>>i*8*sizeof(internal)));
+						}
+						this->clipEndExtraBits<binaryVectorBase>();
+						return *this;
+					}
+					//
+					template<typename T> binaryVectorBase& operator |=(T other) {
+						auto baseOffset=this->blockStart();
+						auto end=baseOffset+this->size();
+						//go though and or
+						for(auto i=baseOffset;i!=end;i++) {
+							this->internalVec._writeType(i,this->internalVec._readType(i)|(other>>i*8*sizeof(internal)));
+						}
+						this->clipEndExtraBits<binaryVectorBase>();
+						return *this;
+					}
 					//or
 					//binary equality operators
 					template<class vector> binaryVectorBase& operator |=(binaryVectorBase<internal,vector>& other) {
@@ -888,7 +950,7 @@
 								//===== the width
 								if(end>parentEnd) {
 									//trim width to not go past end of parent
-									this->ow.width=parentEnd-end;
+									this->ow.width=parentEnd-offset;
 								} else if(end<=where.offset) {
 									//if end is before the start,dont address anything
 									this->ow.width=0;
