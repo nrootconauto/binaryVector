@@ -7,6 +7,42 @@ This is a vector that is aimed at btiwise operations such as bit shifting and ma
 
 The binary vector `binaryVector::binaryVector <internalType, addressor>`works by storing an internal resizeable vector that internally uses  `internalType` to store the bits. The real magic is the addressors that can be used to address the bits.  So the addressors are 
 
+## QuickStart
+
+Quick usage
+```cpp
+//contructor
+		binaryVector::binaryVector<unsigned int> tenBits(10); //an empty bit vector of 10 bits 
+		binaryVector::binaryVector<unsigned int> valueOfTwelve({12}); //a vector with a value of twelve(THE 12 IS AN unsigend int,NOT A BYTE)
+		//bitwise operation ssignment
+		tenBits|=valueOfTwelve;
+		tenBits&=4;
+		tenBits^=5;
+		//shift operation
+		tenBits<<=3;
+		tenBits>>=1;
+		//assign operation
+		auto assigned=tenBits;
+		//bitwise operations
+		auto a=assigned&0xff;
+		auto x=assigned^0x1f;
+		auto o=assigned|0x01;
+		auto n=~assigned;
+		//load operation,load value starting at byte 0 into  an unsigned int
+		auto twelve=valueOfTwelve.template loadIntoPrimitive<unsigned int>(0);
+		//store operation ,sort value of unsigned int into byte 0
+		tenBits.template loadValue<unsigned int>(0x4ff);
+		//print
+		std::cout<<tenBits<<std::endl;
+		//View,a view is a windows that acts on only a certian region of bits
+//Makes a "window" that operates and reads from bit 2 to 9(the window is 7 bits wide)
+		binaryVector::binaryVectorView<unsigned int> view(tenBits,2,7);
+		//addresses bits 3 through 9(width is not defined in consturtor so defualts entire view)
+		binaryVector::nestedBinaryView<unsigned int, decltype(view)>nested1 (view,1);
+		//nested view of nested view
+		binaryVector::nestedBinaryView<unsigned int, decltype(nested1)>nested2 (nested1);
+```
+
 ### Addressing Mode #1: The default addressor (binaryVector)
 
 This addressor addresses bits. A whole block of bits can be loaded into the binaryVector at once with
