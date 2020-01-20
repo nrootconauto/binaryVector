@@ -105,7 +105,7 @@ This changes the offset of the view(The offset will be clipped to the offset of 
 
  You can use the standard methods of `binaryVector`
 
-# Quick Start
+## Quick Start
 
 Quick usage
 ```cpp
