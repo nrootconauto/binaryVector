@@ -410,6 +410,7 @@
 						this->clipEndExtraBits<binaryVectorBase>();
 					}
 					binaryVectorBase(std::initializer_list<internal> values):internalVec(this) {
+						this->resize(values.size()*sizeof(internal));
 						auto index=0;
 						for(auto& value:values)
 							this->writeBlock(index++, value);
