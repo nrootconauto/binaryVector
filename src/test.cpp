@@ -8,10 +8,20 @@
 	TEST_CASE_TEMPLATE_DEFINE("Example Usages",T,examples) {
 		//contructor
 		binaryVector::binaryVector<unsigned int> tenBits(10); //an empty bit vector of 10 bits 
-		binaryVector::binaryVector<unsigned int> valueOfTwelve({12}); //a vector with a value of twelve
-		//binary operation
+		binaryVector::binaryVector<unsigned int> valueOfTwelve({12}); //a vector with a value of twelve(THE 12 IS AN unsigend int,NOT A BYTE)
+		//bitwise operation ssignment
 		tenBits|=valueOfTwelve;
 		tenBits&=4;
+		tenBits^=5;
+		//shift operation
+		tenBits<<=3;
+		tenBits>>=1;
+		//assign operation
+		auto assigned=tenBits;
+		//bitwise operations
+		auto a=assigned&0xff;
+		auto x=assigned^0x1f;
+		auto o=assigned|0x01;
 		//print
 		std::cout<<tenBits<<std::endl;
 		//

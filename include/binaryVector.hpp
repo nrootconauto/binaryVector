@@ -219,8 +219,8 @@
 						return temp;
 					}
 					template<typename T> binaryVectorBase<internal,addressor<internal>> operator^(T other) {
-						auto start=this->internals().blockStart();
-						auto end=start+this->internals().blockSize();
+						signed long start=this->blockStart();
+						signed long end=start+this->size();
 						binaryVectorBase<internal,addressor<internal>> retVal(sizeof(T)*8);
 						for(auto i=start;i!=end;i++)
 							retVal.internals()._writeType(i,this->internalVec._readType(i)^(other>>i*8*sizeof(internal)));
@@ -228,8 +228,8 @@
 						return retVal;
 					}
 					template<typename T> binaryVectorBase<internal,addressor<internal>> operator|(T other) {
-						auto start=this->internals().blockStart();
-						auto end=start+this->internals().blockSize();
+						signed long start=this->blockStart();
+						signed long end=start+this->size();
 						binaryVectorBase<internal,addressor<internal>> retVal(sizeof(T)*8);
 						for(auto i=start;i!=end;i++)
 							retVal.internals()._writeType(i,this->internalVec._readType(i)|(other>>i*8*sizeof(internal)));
@@ -237,8 +237,8 @@
 						return retVal;
 					}
 					template<typename T> binaryVectorBase<internal,addressor<internal>> operator&(T other) {
-						auto start=this->internals().blockStart();
-						auto end=start+this->internals().blockSize();
+						signed long start=this->blockStart();
+						signed long end=start+this->size();
 						binaryVectorBase<internal,addressor<internal>> retVal(sizeof(T)*8);
 						for(auto i=start;i!=end;i++)
 							retVal.internals()._writeType(i,this->internalVec._readType(i)&(other>>i*8*sizeof(internal)));
@@ -643,14 +643,17 @@
 					internalVector& internals()  {
 						return this->internalVec;
 					}
-					signed long size()  {
+					signed long width()  {
 						return this->bitCount;
+					}
+					signed long size() {
+						return this->internals().size();
 					}
 					template<class T=binaryVectorBase> void clipEndExtraBits() {
 						auto& master=this->internals().template getParent<T>();
 						auto& baseContent=this->internals().baseContent();
 						auto totalBits=8*sizeof(internal)*baseContent.size();
-						auto toClip=totalBits-master.size();
+						auto toClip=totalBits-master.width();
 						//makes a internal full of ones then shifts it right to make a mask
 						auto backIndex=baseContent.size()-1; //last elem
 						const internal ones=~(internal)0;
