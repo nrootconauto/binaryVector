@@ -5,7 +5,7 @@ This is a vector that is aimed at btiwise operations such as bit shifting and ma
 
 ## Addressing the bits
 
-The binary vector `binaryVector::binaryVector <internalType, addressor>`works by storing an internal resizeable vector that internally uses  `internalType` to store the bits. The real magic is the addressors that can be used to address the bits.  So the addressors are 
+The binary vector `binaryVector::binaryVector <internalType>`works by storing an internal resizeable vector that internally uses  `internalType` to store the bits. The real magic is the addressors that can be used to address the bits.  So the addressors are 
 
 ## QuickStart
 
@@ -117,13 +117,21 @@ This is the contructor,what it does is creates a window of the parent at offset 
 
 Inherients Methods from `binaryVector`
 
-### outside Functions
+### Addressing mode #3: The nested binary View: (nestedBinaryView)
 
-These are functions  that can be used with `binaryVector`
+This is like a binaryVectorView but it is nested
 
-#### virtualShift(vector,offset)
+#### nestedBinaryView::resize(width)
 
-This function applys an offset to the value of the window when reading in a  `binaryVectorView`. This can be used to emulate reading a shifted value without any modification to the view's data. 
+This resizes the width of the view,(which will be clipped to the end of the parent if goes past end)
+
+#### nestedBinaryView::move(offset)
+
+This changes the offset of the view(The offset will be clipped to the offset of the parent)
+
+#### nestedBinaryView::X
+
+ You can use the standard methods of `binaryVector`
 
 ## WARNINGS
 
